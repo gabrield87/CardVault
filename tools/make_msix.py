@@ -18,7 +18,17 @@ import argparse
 import os
 import re
 import shutil
+import sys
 from xml.sax.saxutils import escape
+
+
+# Consola serverelor Windows de build folosește cp1252 (fără ă, ș, ț...).
+# Scriem mereu UTF-8, ca mesajele cu diacritice să nu oprească build-ul.
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 

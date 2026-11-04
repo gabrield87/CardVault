@@ -16,6 +16,15 @@ import re
 import sys
 from datetime import date
 
+
+# Consola serverelor Windows de build folosește cp1252 (fără ă, ș, ț...).
+# Scriem mereu UTF-8, ca mesajele cu diacritice să nu oprească build-ul.
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 AUTHOR = "Gabriel Dobre"
 APP_NAME = "CardVault"
 COPYRIGHT_START_YEAR = 2026
