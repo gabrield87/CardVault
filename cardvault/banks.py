@@ -44,6 +44,15 @@ BANKS = {
         "text": "#FFFFFF",
         "accent": "#F8E872",
     },
+    "raiffeisen": {
+        "name": "Raiffeisen Bank",
+        "short": "Raiffeisen",
+        "mini": "RAIFF",
+        "colors": ("#FFE100", "#D9A300"),   # galben auriu
+        "text": "#000000",                   # text negru
+        "accent": "#000000",                 # accente negre
+        "deco_alpha": 70,                    # cercul decorativ negru mai vizibil
+    },
     "revolut": {
         "name": "Revolut",
         "short": "Revolut",
@@ -68,6 +77,7 @@ _KEYWORDS = {
     "bt": ("bt", "transilvania"),
     "brd": ("brd", "societe", "société"),
     "cec": ("cec",),
+    "raiffeisen": ("raiffeisen", "raif"),
     "revolut": ("revolut",),
 }
 

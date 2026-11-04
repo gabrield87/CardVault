@@ -300,7 +300,7 @@ def paint_card(p: QPainter, rect: QRectF, card: dict, tr, reveal=False, compact=
     # elemente decorative în culoarea de accent a băncii
     p.setPen(Qt.PenStyle.NoPen)
     deco = QColor(accent)
-    deco.setAlpha(38)
+    deco.setAlpha(theme.get("deco_alpha", 38))
     p.setBrush(deco)
     p.drawEllipse(QRectF(rect.x() + w * 0.58, rect.y() - h * 0.5, w * 0.8, w * 0.8))
     p.setBrush(QColor(255, 255, 255, 16))

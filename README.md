@@ -39,7 +39,7 @@ CardVault nu are nevoie de rețea și nu o folosește. Protecția are trei nivel
   - **Mută baza de date…** — mută fișierul activ într-un alt loc.
   - **Deschide o bază de date existentă…** — de exemplu după o reinstalare sau de pe un stick USB.
 - **Bara de jos** arată versiunea, calea bazei de date, indicatorul „Offline” și copyrightul.
-- **Bănci emitente** (ING, BT, BRD, CEC, Revolut), cu culorile lor. Banca e obligatorie.
+- **Bănci emitente** (ING, BT, BRD, CEC, Raiffeisen, Revolut), cu culorile lor. Banca e obligatorie.
 - **Alertă de expirare** la pornire.
 - Date sensibile ascunse, clipboard golit automat după 30 s, blocare automată după 5 min.
 

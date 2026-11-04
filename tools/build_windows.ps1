@@ -10,6 +10,9 @@ param(
     [string]$Version = ""
 )
 $ErrorActionPreference = "Stop"
+# Python să folosească UTF-8 (consola serverelor de build e cp1252)
+$env:PYTHONUTF8 = "1"
+$env:PYTHONIOENCODING = "utf-8"
 Set-Location (Split-Path -Parent $PSScriptRoot)
 if (-not $Version) {
     # build local: versiunea din cardvault/_version.py

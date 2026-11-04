@@ -6,6 +6,7 @@ Pune aici siglele oficiale ca fisiere PNG cu fundal transparent:
   bt.png       Banca Transilvania
   brd.png      BRD - Groupe Societe Generale
   cec.png      CEC Bank
+  raiffeisen.png  Raiffeisen Bank
   revolut.png  Revolut
 
 Aplicatia le afiseaza automat pe carduri la urmatoarea pornire.
