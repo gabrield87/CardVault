@@ -749,6 +749,18 @@ _NEW6 = {
 for _code, _vals in _NEW6.items():
     T[_code].update(_vals)
 
+# ---- v1.4: sorting + drag & drop order
+_NEW7 = {
+    "en": {"sort_bank": "Sort: bank (A–Z)", "sort_name": "Sort: card name (A–Z)", "sort_custom": "Sort: my order", "drag_hint": "Drag cards to set your own order.", "drag_hint_search": "Clear the search to reorder cards."},
+    "ro": {"sort_bank": "Sortare: bancă (A–Z)", "sort_name": "Sortare: nume card (A–Z)", "sort_custom": "Sortare: ordinea mea", "drag_hint": "Trage cardurile ca să le stabilești ordinea.", "drag_hint_search": "Golește căutarea ca să poți reordona cardurile."},
+    "de": {"sort_bank": "Sortierung: Bank (A–Z)", "sort_name": "Sortierung: Kartenname (A–Z)", "sort_custom": "Sortierung: eigene Reihenfolge", "drag_hint": "Ziehen Sie Karten, um Ihre Reihenfolge festzulegen.", "drag_hint_search": "Suche leeren, um Karten neu anzuordnen."},
+    "fr": {"sort_bank": "Tri : banque (A–Z)", "sort_name": "Tri : nom de la carte (A–Z)", "sort_custom": "Tri : mon ordre", "drag_hint": "Faites glisser les cartes pour définir votre ordre.", "drag_hint_search": "Videz la recherche pour réorganiser les cartes."},
+    "es": {"sort_bank": "Orden: banco (A–Z)", "sort_name": "Orden: nombre de la tarjeta (A–Z)", "sort_custom": "Orden: mi orden", "drag_hint": "Arrastra las tarjetas para fijar tu propio orden.", "drag_hint_search": "Borra la búsqueda para reordenar las tarjetas."},
+    "it": {"sort_bank": "Ordina: banca (A–Z)", "sort_name": "Ordina: nome carta (A–Z)", "sort_custom": "Ordina: il mio ordine", "drag_hint": "Trascina le carte per stabilire il tuo ordine.", "drag_hint_search": "Cancella la ricerca per riordinare le carte."},
+}
+for _code, _vals in _NEW7.items():
+    T[_code].update(_vals)
+
 LANGUAGES = list(T.keys())
 
 

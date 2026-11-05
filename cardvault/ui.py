@@ -5,10 +5,11 @@ import json
 import os
 import sys
 import time
+import unicodedata
 from datetime import datetime
 
 from PySide6.QtCore import (QEvent, QLibraryInfo, QObject, QRectF, QSize, QSortFilterProxyModel,
-                            Qt, QTimer, QTranslator)
+                            Qt, QTimer, QTranslator, Signal)
 from PySide6.QtGui import (QAction, QActionGroup, QColor, QFont, QGuiApplication, QIcon,
                            QKeySequence, QLinearGradient, QPainter, QPainterPath, QPen,
                            QPixmap)
@@ -1028,6 +1029,45 @@ class LoginPage(QWidget):
 
 # ---------------------------------------------------------------- wallet page
 
+# ---------------------------------------------------------------- sorting
+
+SORT_MODES = ("bank", "name", "custom")
+
+
+def _fold(text: str) -> str:
+    """Case- and accent-insensitive sort key ("Ștefan" sorts next to "Stefan")."""
+    norm = unicodedata.normalize("NFKD", text or "")
+    return "".join(ch for ch in norm if not unicodedata.combining(ch)).casefold()
+
+
+def sort_cards(cards, mode, order=None):
+    """bank: by bank name, then card name (default) · name: by card name · custom: user order."""
+    by_bank = lambda c: (_fold(c.get("bank")) or "\uffff", _fold(c.get("label")))
+    if mode == "name":
+        return sorted(cards, key=lambda c: (_fold(c.get("label")), _fold(c.get("bank"))))
+    if mode == "custom":
+        pos = {cid: i for i, cid in enumerate(order or [])}
+        # cards not in the saved order (e.g. newly added) go to the end
+        return sorted(cards, key=lambda c: (pos.get(c["id"], len(pos)), by_bank(c)))
+    return sorted(cards, key=by_bank)
+
+
+class CardList(QListWidget):
+    """Card list with drag & drop reordering; emits orderChanged after a drop."""
+    orderChanged = Signal()
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setDragDropMode(QListWidget.DragDropMode.InternalMove)
+        self.setDefaultDropAction(Qt.DropAction.MoveAction)
+        self.setDropIndicatorShown(True)
+        self.setSelectionMode(QListWidget.SelectionMode.SingleSelection)
+
+    def dropEvent(self, event):
+        super().dropEvent(event)
+        self.orderChanged.emit()
+
+
 class WalletPage(QWidget):
     def __init__(self, window):
         super().__init__()
@@ -1063,7 +1103,19 @@ class WalletPage(QWidget):
         top.addWidget(add)
         sl.addLayout(top)
 
-        self.list = QListWidget()
+        # sort mode: bank A-Z (default), card name A-Z, or the user's own order
+        self.view = self.win.vault.get_view()
+        if self.view.get("sort") not in SORT_MODES:
+            self.view["sort"] = "bank"
+        self.sort_box = QComboBox()
+        for mode in SORT_MODES:
+            self.sort_box.addItem(tr(f"sort_{mode}"), mode)
+        self.sort_box.setCurrentIndex(SORT_MODES.index(self.view["sort"]))
+        self.sort_box.currentIndexChanged.connect(self.on_sort_changed)
+        sl.addWidget(self.sort_box)
+
+        self.list = CardList()
+        self.list.orderChanged.connect(self.on_order_changed)
         self.list.setItemDelegate(CardItemDelegate(tr, self.list))
         self.list.setMouseTracking(True)
         self.list.setVerticalScrollMode(QListWidget.ScrollMode.ScrollPerPixel)
@@ -1073,6 +1125,11 @@ class WalletPage(QWidget):
         self.count = QLabel()
         self.count.setObjectName("muted")
         sl.addWidget(self.count)
+        self.hint = QLabel()
+        self.hint.setObjectName("muted")
+        self.hint.setWordWrap(True)
+        self.hint.setStyleSheet("font-size: 8.5pt;")
+        sl.addWidget(self.hint)
         root.addWidget(side)
 
         # ---- detail
@@ -1090,7 +1147,41 @@ class WalletPage(QWidget):
             c["bank_id"] = bid
             if bid and bid != OTHER_BANK_ID:
                 c["bank"] = bank(bid)["name"]
+        self.cards = sort_cards(self.cards, self.view["sort"], self.view.get("order"))
         self.populate(select_id=select_id)
+
+    def save_view(self):
+        ids = {c["id"] for c in self.cards}
+        self.view["order"] = [cid for cid in self.view.get("order", []) if cid in ids]
+        if self.win.vault.unlocked:
+            self.win.vault.set_view(self.view)
+
+    def on_sort_changed(self, *_):
+        mode = self.sort_box.currentData()
+        if mode == "custom" and not self.view.get("order"):
+            # first switch to "my order": start from what is on screen now
+            self.view["order"] = [c["id"] for c in self.cards]
+        self.view["sort"] = mode
+        self.save_view()
+        self.cards = sort_cards(self.cards, mode, self.view.get("order"))
+        self.populate()
+
+    def on_order_changed(self):
+        """A card was dragged: the order shown becomes the user's custom order."""
+        ids = [self.list.item(i).data(Qt.ItemDataRole.UserRole)["id"] for i in range(self.list.count())]
+        self.view["order"] = ids
+        self.view["sort"] = "custom"
+        self.sort_box.blockSignals(True)
+        self.sort_box.setCurrentIndex(SORT_MODES.index("custom"))
+        self.sort_box.blockSignals(False)
+        self.save_view()
+        self.cards = sort_cards(self.cards, "custom", ids)
+        self.update_hint()
+
+    def update_hint(self):
+        searching = bool(self.search.text().strip())
+        self.list.setDragEnabled(not searching)   # reordering a filtered list would be ambiguous
+        self.hint.setText(self.win.tr("drag_hint_search" if searching else "drag_hint"))
 
     def populate(self, *_, select_id=None):
         if select_id is None and self.list.currentItem():
@@ -1113,6 +1204,7 @@ class WalletPage(QWidget):
         if self.list.count():
             self.list.setCurrentRow(sel_row)
         self.count.setText(self.win.tr("cards_count", n=len(self.cards)))
+        self.update_hint()
         self.show_details()
 
     def current(self):
