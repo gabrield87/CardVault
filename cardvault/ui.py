@@ -8,8 +8,8 @@ import time
 import unicodedata
 from datetime import datetime
 
-from PySide6.QtCore import (QEvent, QLibraryInfo, QObject, QRectF, QSize, QSortFilterProxyModel,
-                            Qt, QTimer, QTranslator, Signal)
+from PySide6.QtCore import (QDate, QEvent, QLibraryInfo, QLocale, QObject, QRectF, QSize,
+                            QSortFilterProxyModel, Qt, QTimer, QTranslator, Signal)
 from PySide6.QtGui import (QAction, QActionGroup, QColor, QFont, QGuiApplication, QIcon,
                            QKeySequence, QLinearGradient, QPainter, QPainterPath, QPen,
                            QPixmap)
@@ -22,7 +22,7 @@ from PySide6.QtWidgets import (QApplication, QColorDialog, QComboBox, QDialog, Q
 
 from . import APP_NAME, APP_VERSION, AUTHOR, COPYRIGHT, copyright_line, copyright_short
 from .banks import BANK_IDS, OTHER_BANK_ID, bank, guess_bank_id, logo_path
-from .cards import (COLORS, days_left, detect_brand, digits, expiry_status, format_number,
+from .cards import (COLORS, days_left, detect_brand, digits, expiry_last_day, expiry_status, format_number,
                     luhn_ok, mask_number, parse_expiry)
 
 EXPIRY_WARNING_DAYS = 60
@@ -1250,12 +1250,6 @@ class WalletPage(QWidget):
         title = QLabel(card.get("label", ""))
         title.setObjectName("title")
         head.addWidget(title, 1)
-        status = expiry_status(card.get("expiry", ""))
-        if status in ("expired", "soon"):
-            col = C_DANGER if status == "expired" else C_WARN
-            badge = QLabel(tr("expired" if status == "expired" else "expires_soon"))
-            badge.setStyleSheet(f"color: {col}; font-size: 9pt; font-weight: 600; padding: 0 8px;")
-            head.addWidget(badge)
         # one button shows / hides every hidden detail of this card (placed before Edit)
         rb = QPushButton(tr("hide_details") if self.details_shown else tr("show_details"))
         if not self.details_shown:
@@ -1274,13 +1268,12 @@ class WalletPage(QWidget):
 
         view = CardView(tr)
         view.set_card(card, reveal=self.details_shown)
-        view.setMaximumWidth(420)
-        lay.addWidget(view, 0, Qt.AlignmentFlag.AlignLeft)
-
-        if self.details_shown:
-            note = QLabel(tr("auto_hide_note", s=DETAILS_AUTO_HIDE_SECONDS))
-            note.setObjectName("muted")
-            lay.addWidget(note)
+        view.setFixedSize(370, 232)
+        card_row = QHBoxLayout()
+        card_row.setSpacing(28)
+        card_row.addWidget(view, 0, Qt.AlignmentFlag.AlignTop)
+        card_row.addLayout(self.build_side_info(card), 1)
+        lay.addLayout(card_row)
 
         box = QFrame()
         box.setObjectName("box")
@@ -1332,6 +1325,40 @@ class WalletPage(QWidget):
         lay.addWidget(box)
         lay.addStretch()
         self.scroll.setWidget(w)
+
+    def build_side_info(self, card):
+        """Right of the card: validity (always) + auto-hide notice (only while details are shown)."""
+        tr = self.win.tr
+        side = QVBoxLayout()
+        side.setSpacing(6)
+        side.addSpacing(18)
+        left = days_left(card.get("expiry", ""))
+        last = expiry_last_day(card.get("expiry", ""))
+        if left is not None and last is not None:
+            date_txt = QLocale(tr.lang).toString(QDate(last.year, last.month, last.day), "d MMMM yyyy")
+            if left < 0:
+                title, color, detail = tr("validity_expired_title"), C_DANGER, tr("validity_expired", date=date_txt, n=-left)
+            elif left == 0:
+                title, color, detail = tr("validity_soon_title"), C_DANGER, tr("validity_today", date=date_txt)
+            elif left <= EXPIRY_WARNING_DAYS:
+                title, color, detail = tr("validity_soon_title"), C_WARN, tr("validity_left", date=date_txt, n=left)
+            else:
+                title, color, detail = tr("validity_ok_title"), "#3ccf91", tr("validity_left", date=date_txt, n=left)
+            t = QLabel("●  " + title)
+            t.setStyleSheet(f"color: {color}; font-size: 13pt; font-weight: 700;")
+            side.addWidget(t)
+            d = QLabel(detail)
+            d.setWordWrap(True)
+            d.setStyleSheet("font-size: 10.5pt;")
+            side.addWidget(d)
+        if self.details_shown:
+            side.addSpacing(16)
+            note = QLabel(tr("auto_hide_note", s=DETAILS_AUTO_HIDE_SECONDS))
+            note.setWordWrap(True)
+            note.setStyleSheet(f"color: {C_WARN}; font-size: 10pt;")
+            side.addWidget(note)
+        side.addStretch()
+        return side
 
     def on_selection_changed(self, *_):
         # moving to another card always starts with its details hidden

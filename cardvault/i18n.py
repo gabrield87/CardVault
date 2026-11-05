@@ -761,6 +761,30 @@ _NEW7 = {
 for _code, _vals in _NEW7.items():
     T[_code].update(_vals)
 
+# ---- v1.4: single show/hide for card details + auto-hide
+_NEW8 = {
+    "en": {"show_details": "Show card details", "hide_details": "Hide card details", "auto_hide_note": "Hidden again automatically after {s} s of inactivity.", "details_auto_hidden": "Card details were hidden automatically."},
+    "ro": {"show_details": "Arată detaliile cardului", "hide_details": "Ascunde detaliile cardului", "auto_hide_note": "Se ascund automat după {s} s de inactivitate.", "details_auto_hidden": "Detaliile cardului au fost ascunse automat."},
+    "de": {"show_details": "Kartendetails anzeigen", "hide_details": "Kartendetails ausblenden", "auto_hide_note": "Werden nach {s} s Inaktivität automatisch ausgeblendet.", "details_auto_hidden": "Die Kartendetails wurden automatisch ausgeblendet."},
+    "fr": {"show_details": "Afficher les détails de la carte", "hide_details": "Masquer les détails de la carte", "auto_hide_note": "Masqués automatiquement après {s} s d’inactivité.", "details_auto_hidden": "Les détails de la carte ont été masqués automatiquement."},
+    "es": {"show_details": "Mostrar los datos de la tarjeta", "hide_details": "Ocultar los datos de la tarjeta", "auto_hide_note": "Se ocultan automáticamente tras {s} s de inactividad.", "details_auto_hidden": "Los datos de la tarjeta se ocultaron automáticamente."},
+    "it": {"show_details": "Mostra i dettagli della carta", "hide_details": "Nascondi i dettagli della carta", "auto_hide_note": "Nascosti automaticamente dopo {s} s di inattività.", "details_auto_hidden": "I dettagli della carta sono stati nascosti automaticamente."},
+}
+for _code, _vals in _NEW8.items():
+    T[_code].update(_vals)
+
+# ---- v1.4: card validity next to the card + auto-hide notice
+_NEW9 = {
+    "en": {"validity_ok_title": "Card valid", "validity_soon_title": "Expiring soon", "validity_expired_title": "Card expired", "validity_left": "Valid until {date}\nDays left: {n}", "validity_today": "Expires today, {date}", "validity_expired": "Expired on {date}\nDays since: {n}", "auto_hide_note": "Card details will be hidden after {s} seconds of inactivity."},
+    "ro": {"validity_ok_title": "Card valabil", "validity_soon_title": "Expiră în curând", "validity_expired_title": "Card expirat", "validity_left": "Valabil până pe {date}\nZile rămase: {n}", "validity_today": "Expiră astăzi, {date}", "validity_expired": "A expirat pe {date}\nZile de la expirare: {n}", "auto_hide_note": "Detaliile cardului se ascund automat după {s} de secunde de inactivitate."},
+    "de": {"validity_ok_title": "Karte gültig", "validity_soon_title": "Läuft bald ab", "validity_expired_title": "Karte abgelaufen", "validity_left": "Gültig bis {date}\nVerbleibende Tage: {n}", "validity_today": "Läuft heute ab, {date}", "validity_expired": "Abgelaufen am {date}\nTage seitdem: {n}", "auto_hide_note": "Die Kartendetails werden nach {s} Sekunden Inaktivität ausgeblendet."},
+    "fr": {"validity_ok_title": "Carte valide", "validity_soon_title": "Expire bientôt", "validity_expired_title": "Carte expirée", "validity_left": "Valide jusqu’au {date}\nJours restants : {n}", "validity_today": "Expire aujourd’hui, {date}", "validity_expired": "Expirée le {date}\nJours écoulés : {n}", "auto_hide_note": "Les détails de la carte seront masqués après {s} secondes d’inactivité."},
+    "es": {"validity_ok_title": "Tarjeta válida", "validity_soon_title": "Vence pronto", "validity_expired_title": "Tarjeta vencida", "validity_left": "Válida hasta el {date}\nDías restantes: {n}", "validity_today": "Vence hoy, {date}", "validity_expired": "Venció el {date}\nDías transcurridos: {n}", "auto_hide_note": "Los datos de la tarjeta se ocultarán tras {s} segundos de inactividad."},
+    "it": {"validity_ok_title": "Carta valida", "validity_soon_title": "In scadenza", "validity_expired_title": "Carta scaduta", "validity_left": "Valida fino al {date}\nGiorni rimasti: {n}", "validity_today": "Scade oggi, {date}", "validity_expired": "Scaduta il {date}\nGiorni trascorsi: {n}", "auto_hide_note": "I dettagli della carta verranno nascosti dopo {s} secondi di inattività."},
+}
+for _code, _vals in _NEW9.items():
+    T[_code].update(_vals)
+
 LANGUAGES = list(T.keys())
 
 
