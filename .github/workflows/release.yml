@@ -62,11 +62,6 @@ jobs:
         shell: pwsh
         run: ./tools/build_windows.ps1 -Version "${{ steps.ver.outputs.version }}"
 
-      - name: Sign CardVault.exe (if a certificate is configured)
-        if: ${{ env.CODE_SIGN_PFX_BASE64 != '' }}
-        shell: pwsh
-        run: ./tools/sign.ps1 "dist/CardVault/CardVault.exe"
-
       - name: Portable zip
         shell: pwsh
         run: |
@@ -79,11 +74,6 @@ jobs:
           choco install innosetup --no-progress -y
           & "C:/Program Files (x86)/Inno Setup 6/ISCC.exe" "/DAppVersion=${{ steps.ver.outputs.version }}" installer.iss
           if ($LASTEXITCODE -ne 0) { throw "ISCC failed" }
-
-      - name: Sign the installer (if a certificate is configured)
-        if: ${{ env.CODE_SIGN_PFX_BASE64 != '' }}
-        shell: pwsh
-        run: Get-ChildItem "installer/*.exe" | ForEach-Object { ./tools/sign.ps1 $_.FullName }
 
       - name: Attach to the Release
         if: ${{ github.event_name == 'release' }}
