@@ -1,19 +1,19 @@
-# CardVault - Release: executabil portabil + installer
+# CardVault - Release: portable executable + installer
 # Copyright (c) 2026 Gabriel Dobre. All rights reserved.
 #
-# Se declanșează când publici un Release pe GitHub (tag de forma v1.3.0).
-# Produce și atașează la Release:
-#   - CardVault-<versiune>-win-x64-portable.zip   (rulează fără instalare)
-#   - CardVault-Setup-<versiune>.exe              (installer; adaugă reguli Windows
-#                                                  Firewall care blochează orice trafic)
-# Versiunea pentru Microsoft Store se construiește în paralel de store.yml.
+# Runs when you publish a GitHub Release (tag like v1.3.0).
+# Builds and attaches to the Release:
+#   - CardVault-<version>-win-x64-portable.zip   (runs without installation)
+#   - CardVault-Setup-<version>.exe              (installer; adds Windows Firewall
+#                                                 rules that block all traffic)
+# The Microsoft Store package is built in parallel by store.yml.
 #
-# Semnare (opțională): dacă există Secrets CODE_SIGN_PFX_BASE64 + CODE_SIGN_PASSWORD,
-# fișierele se semnează; altfel rămân nesemnate (Windows afișează avertismentul).
+# Signing (optional): if the CODE_SIGN_PFX_BASE64 + CODE_SIGN_PASSWORD secrets
+# exist, the files are signed; otherwise they stay unsigned (Windows shows a warning).
 #
-# x86 (32 de biți) nu este posibil: PySide6 (Qt for Python) există doar pe 64 de biți.
+# x86 (32-bit) is not possible: PySide6 (Qt for Python) exists only for 64-bit.
 
-name: Release – portabil + installer
+name: Release - portable + installer
 
 on:
   release:
@@ -21,7 +21,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Versiunea (ex. 1.3.0). Gol = din tag."
+        description: "Version (e.g. 1.3.0). Empty = taken from the tag."
         required: false
         default: ""
 
@@ -45,7 +45,7 @@ jobs:
           python-version: "3.12"
           architecture: x64
 
-      - name: Determină versiunea
+      - name: Determine version
         id: ver
         shell: bash
         run: |
@@ -53,7 +53,7 @@ jobs:
           [ -z "$V" ] && V="${GITHUB_REF_NAME}"
           V="${V#v}"
           if ! echo "$V" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+'; then
-            echo "Versiune invalidă: '$V'. Publică un Release cu tag de forma v1.3.0." >&2
+            echo "Invalid version: '$V'. Publish a Release with a tag like v1.3.0." >&2
             exit 1
           fi
           echo "version=$V" >> "$GITHUB_OUTPUT"
@@ -62,12 +62,12 @@ jobs:
         shell: pwsh
         run: ./tools/build_windows.ps1 -Version "${{ steps.ver.outputs.version }}"
 
-      - name: Semnează CardVault.exe (dacă există certificat)
+      - name: Sign CardVault.exe (if a certificate is configured)
         if: ${{ env.CODE_SIGN_PFX_BASE64 != '' }}
         shell: pwsh
         run: ./tools/sign.ps1 "dist/CardVault/CardVault.exe"
 
-      - name: Zip portabil
+      - name: Portable zip
         shell: pwsh
         run: |
           $v = "${{ steps.ver.outputs.version }}"
@@ -78,14 +78,14 @@ jobs:
         run: |
           choco install innosetup --no-progress -y
           & "C:/Program Files (x86)/Inno Setup 6/ISCC.exe" "/DAppVersion=${{ steps.ver.outputs.version }}" installer.iss
-          if ($LASTEXITCODE -ne 0) { throw "ISCC a eșuat" }
+          if ($LASTEXITCODE -ne 0) { throw "ISCC failed" }
 
-      - name: Semnează installer-ul (dacă există certificat)
+      - name: Sign the installer (if a certificate is configured)
         if: ${{ env.CODE_SIGN_PFX_BASE64 != '' }}
         shell: pwsh
         run: Get-ChildItem "installer/*.exe" | ForEach-Object { ./tools/sign.ps1 $_.FullName }
 
-      - name: Atașează la Release
+      - name: Attach to the Release
         if: ${{ github.event_name == 'release' }}
         uses: softprops/action-gh-release@v2
         with:
@@ -93,7 +93,7 @@ jobs:
             CardVault-${{ steps.ver.outputs.version }}-win-x64-portable.zip
             installer/*.exe
 
-      - name: Artefacte (rulare manuală)
+      - name: Upload artifacts (manual run)
         if: ${{ github.event_name != 'release' }}
         uses: actions/upload-artifact@v4
         with:

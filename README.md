@@ -1,91 +1,96 @@
 # CardVault
 
-**© Gabriel Dobre. Toate drepturile rezervate.** (anul se actualizează singur)
+**© Gabriel Dobre. All rights reserved.** (the year updates automatically)
 
-Portofel securizat pentru cardurile bancare, pentru Windows 10 (1809+) și Windows 11, pe **64 de biți**. Funcționează **strict offline** și pornește automat în limba sistemului de operare.
+A secure wallet for your bank cards, for Windows 10 (1809+) and Windows 11, **64-bit**. It works **strictly offline** and starts in the operating system's language.
 
-## Funcționare 100% offline
+## 100% offline operation
 
-CardVault nu are nevoie de rețea și nu o folosește. Protecția are trei niveluri:
+CardVault does not need the network and does not use it. Protection works on three levels:
 
-1. **În cod (toate variantele).** Primul lucru la pornire (`cardvault/netguard.py`) este un blocaj intern care oprește orice tentativă de:
-   - conexiune la internet **sau** la rețeaua locală (TCP, UDP);
-   - căutare DNS sau cerere HTTP;
-   - lansare a altor programe;
-   - încărcare a bibliotecilor Windows de rețea.
-   
-   Blocajul nu mai poate fi dezactivat până la închiderea aplicației. În bara de jos apare „● Offline”.
-2. **În pachet.** Modulele de rețea nefolosite (TLS/SSL, e-mail, FTP, servere, Qt Network) sunt scoase complet din executabil.
-3. **În sistem (varianta cu installer).** Installer-ul adaugă două reguli **Windows Firewall**, care blochează orice trafic al `CardVault.exe`, la intrare și la ieșire, pe orice tip de rețea. Regulile se șterg la dezinstalare.
+1. **In code (all editions).** The very first thing at startup (`cardvault/netguard.py`) is an internal lockdown that blocks any attempt to:
+   - connect to the internet **or** to the local network (TCP, UDP);
+   - perform a DNS lookup or an HTTP request;
+   - launch other programs;
+   - load Windows networking libraries.
 
-**Doar locații locale:** baza de date poate fi creată, mutată, exportată sau deschisă doar pe discurile acestui calculator, inclusiv pe stick-uri USB.
-- Căile de rețea (`\\server\...`) și unitățile mapate din rețea sunt refuzate.
-- Dialogul de fișiere este cel intern al aplicației: nu încarcă extensii Windows și nu are secțiunea „Rețea”.
-- Dacă alegi un folder sincronizat cu un serviciu cloud (OneDrive, Google Drive, Dropbox…), aplicația te avertizează înainte.
+   The lockdown cannot be switched off until the app exits. The status bar shows "● Offline".
+2. **In the package.** Unused networking modules (TLS/SSL, e-mail, FTP, servers, Qt Network) are removed from the executable entirely.
+3. **In the system (installer edition).** The installer adds two **Windows Firewall** rules that block all traffic of `CardVault.exe`, inbound and outbound, on every network profile. The rules are removed on uninstall.
 
-**Disclaimer:** la prima pornire, utilizatorul vede un mesaj care îi explică toate acestea. Mesajul poate fi redeschis oricând din *Ajutor → Confidențialitate și funcționare offline*.
+**Local locations only:** the database can be created, moved, exported or opened only on this computer's drives, USB sticks included.
+- Network paths (`\\server\...`) and mapped network drives are rejected.
+- The file dialog is the app's own: it loads no Windows shell extensions and has no "Network" section.
+- If you pick a folder synced by a cloud service (OneDrive, Google Drive, Dropbox…), the app warns you first.
 
-> **Limite, spuse sincer:**
-> - Blocajul din cod acoperă codul Python al aplicației. Componentele native (Qt, Windows) nu deschid conexiuni în CardVault, dar garanția la nivel de sistem pentru ele o dau regulile de firewall din varianta cu installer.
-> - În varianta portabilă și în cea din Store nu există reguli de firewall; acolo rămân primele două niveluri.
-> - Sincronizarea unui folder în cloud o face serviciul respectiv, nu CardVault. Fișierul rămâne oricum criptat.
+**Disclaimer:** on first launch the user sees a message explaining all of the above. It can be reopened at any time from *Help → Privacy and offline operation*.
 
-## Funcții
+> **Limitations, stated honestly:**
+> - The in-code lockdown covers the app's Python code. Native components (Qt, Windows) do not open connections in CardVault, but the system-level guarantee for them comes from the firewall rules of the installer edition.
+> - The portable and Store editions have no firewall rules; they rely on the first two levels.
+> - Syncing a folder to the cloud is done by that service, not by CardVault. The file stays encrypted either way.
 
-- **Bază de date criptată, parolată.** Fiecare card este criptat cu AES-256-GCM, iar cheia se obține din parola principală prin scrypt.
-- **Alegi unde stă fișierul `.cvw`.** La creare ești întrebat. Implicit: `C:\Users\<utilizator>\CardVault\wallet.cvw`, o locație locală, care nu se sincronizează și nu se șterge la dezinstalare.
-- **Meniul *Fișier*:**
-  - **Exportă baza de date…** — salvează o copie criptată.
-  - **Mută baza de date…** — mută fișierul activ într-un alt loc.
-  - **Deschide o bază de date existentă…** — de exemplu după o reinstalare sau de pe un stick USB.
-- **Bara de jos** arată versiunea, calea bazei de date, indicatorul „Offline” și copyrightul.
-- **Bănci emitente** (ING, BT, BRD, CEC, Raiffeisen, Revolut), cu culorile lor. Banca e obligatorie.
-- **Alertă de expirare** la pornire.
-- Date sensibile ascunse, clipboard golit automat după 30 s, blocare automată după 5 min.
+## Features
 
-## Copyright și versiune
+- **Encrypted, password-protected database.** Every card is encrypted with AES-256-GCM; the key is derived from the master password with scrypt.
+- **You choose where the `.cvw` file lives.** You are asked when the wallet is created. Default: `C:\Users\<user>\CardVault\wallet.cvw` — local, not synced, and not deleted on uninstall.
+- **File menu:**
+  - **Export database…** — saves an encrypted copy.
+  - **Move database…** — moves the active file to another place.
+  - **Open an existing database…** — e.g. after reinstalling, or from a USB stick.
+- **Status bar** shows the version, the database path, the "Offline" badge and the copyright.
+- **Issuing banks** (ING, BT, BRD, CEC, Raiffeisen, Revolut) with their colours. Choosing a bank is mandatory.
+- **Expiry alert** on startup.
+- Sensitive data hidden by default, clipboard cleared after 30 s, automatic lock after 5 minutes.
+- **Interface language:** English, Romanian, German, French, Spanish, Italian — picked automatically from Windows (English otherwise), changeable from *Settings → Language*.
 
-- Numele, autorul și copyrightul sunt definite o singură dată, în `cardvault/__init__.py`. Anul se actualizează singur.
-- Versiunea **vine din GitHub Release**: tag-ul `v1.3.0` devine automat versiunea `1.3.0` în aplicație, în detaliile `.exe`, în installer și în pachetul pentru Store.
+## Copyright and version
 
-## Build-uri automate la fiecare Release
+- The name, author and copyright are defined once, in `cardvault/__init__.py`. The year updates automatically.
+- The version **comes from the GitHub Release**: tag `v1.3.0` automatically becomes version `1.3.0` in the app, in the `.exe` details, in the installer and in the Store package.
 
-La **publicarea unui Release** pe GitHub (tag `vX.Y.Z`) pornesc în paralel două workflow-uri:
+## Automatic builds on every Release
 
-| Workflow | Produce | Avertisment Windows |
+When you **publish a Release** on GitHub (tag `vX.Y.Z`), two workflows run in parallel:
+
+| Workflow | Produces | Windows warning |
 |---|---|---|
-| `release.yml` | `CardVault-X.Y.Z-win-x64-portable.zip` + `CardVault-Setup-X.Y.Z.exe` | Da, dacă nu sunt semnate |
-| `store.yml` | `CardVault-X.Y.Z-store-x64.msix` (îl urci în Partner Center) | **Nu**: Microsoft Store îl semnează |
+| `release.yml` | `CardVault-X.Y.Z-win-x64-portable.zip` + `CardVault-Setup-X.Y.Z.exe` | Yes, unless signed |
+| `store.yml` | `CardVault-X.Y.Z-store-x64.msix` (upload it to Partner Center) | **No**: the Microsoft Store signs it |
 
-Fișierele se atașează automat la pagina Release-ului. Ambele workflow-uri pot fi rulate și manual, din *Actions → Run workflow*.
+The files are attached to the Release page automatically. Both workflows can also be run by hand from *Actions → Run workflow*.
 
-### Configurare pentru Microsoft Store (o singură dată)
+### Microsoft Store setup (once)
 
-1. Creează-ți cont gratuit de dezvoltator individual: <https://storedeveloper.microsoft.com>. Ai nevoie de un act de identitate și un selfie.
-2. În Partner Center, **rezervă numele** „CardVault” (sau altul liber) și deschide *Product management → Product identity*.
-3. În repo-ul GitHub mergi la **Settings → Secrets and variables → Actions → Variables** și adaugă:
+1. Create a free individual developer account at <https://storedeveloper.microsoft.com> (an ID document and a selfie are required).
+2. In Partner Center, **reserve the name** "CardVault" (or another free name) and open *Product management → Product identity*.
+3. In the GitHub repository go to **Settings → Secrets and variables → Actions → Variables** and add:
    - `STORE_IDENTITY_NAME` = *Package/Identity/Name*
-   - `STORE_PUBLISHER` = *Package/Identity/Publisher* (începe cu `CN=`)
+   - `STORE_PUBLISHER` = *Package/Identity/Publisher* (starts with `CN=`)
    - `STORE_PUBLISHER_DISPLAY_NAME` = *Package/Properties/PublisherDisplayName*
-4. La următorul Release apare fișierul `…-store-x64.msix`. Îl urci în Partner Center, la *Packages*.
-   - Capabilitatea `runFullTrust` e standard pentru aplicațiile desktop. Dacă Store-ul cere o justificare: „aplicație desktop Win32 (Qt), rulează local, fără rețea”.
+4. On the next Release a `…-store-x64.msix` file appears. Upload it in Partner Center under *Packages*.
+   - The `runFullTrust` capability is standard for desktop apps. If the Store asks for a justification: "Win32 (Qt) desktop application, runs locally, no network access".
 
-Până setezi variabilele, `store.yml` doar explică ce lipsește și nu blochează Release-ul.
+Until these variables are set, `store.yml` only explains what is missing and does not fail the Release.
 
-În versiunea din Store, siglele băncilor se pun în `C:\Users\<utilizator>\CardVault\banks\`, pentru că folderul aplicației e doar-citire.
+In the Store edition, bank logos go in `C:\Users\<user>\CardVault\banks\`, because the app folder is read-only.
 
-### Semnare pentru varianta portabilă și installer (opțional)
+### Signing the portable edition and the installer (optional)
 
-Dacă vei avea un certificat de code signing livrat ca `.pfx`, adaugă în **Secrets**:
-- `CODE_SIGN_PFX_BASE64`;
-- `CODE_SIGN_PASSWORD`.
+If you get a code-signing certificate delivered as a `.pfx` file, add these **Secrets**:
+- `CODE_SIGN_PFX_BASE64`
+- `CODE_SIGN_PASSWORD`
 
-Certificatele moderne OV/EV țin cheia pe token sau în cloud. Pentru ele, înlocuiește conținutul din `tools/sign.ps1` cu instrumentul furnizorului.
+Modern OV/EV certificates keep the key on a token or in the cloud. For those, replace the contents of `tools/sign.ps1` with the provider's tool.
 
-## De ce doar 64 de biți
+## Why 64-bit only
 
-PySide6 (Qt for Python) există doar pe 64 de biți, iar Windows 11 e oricum doar pe 64 de biți.
+PySide6 (Qt for Python) exists only for 64-bit Windows, and Windows 11 is 64-bit only anyway.
 
-## Build local
+## Local build
 
-Ai nevoie de Python 3.12. Rulează `build.bat`; rezultatul apare în `dist\CardVault\` (folosește `tools/build_windows.ps1`, la fel ca workflow-urile).
+You need Python 3.12. Run `build.bat`; the result is in `dist\CardVault\` (it uses `tools/build_windows.ps1`, exactly like the workflows).
+
+## Bank logos (optional)
+
+Logos are registered trademarks and are not included. Put PNG files with a transparent background in the `banks` folder next to `CardVault.exe` (`ing.png`, `bt.png`, `brd.png`, `cec.png`, `raiffeisen.png`, `revolut.png`) and the app shows them automatically. Without them, the bank name is shown on the card.

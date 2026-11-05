@@ -1,16 +1,16 @@
-# CardVault - regula „doar local” pentru fișiere
+# CardVault - "local only" rule for files
 # Copyright (c) 2026 Gabriel Dobre. All rights reserved.
 """
-Baza de date CardVault poate sta DOAR pe discurile acestui calculator
-(inclusiv stick-uri/discuri USB). Sunt refuzate:
+The CardVault database may live ONLY on this computer's drives
+(USB sticks/drives included). Rejected:
 
-* căile de rețea \\\\server\\share (UNC),
-* unitățile mapate din rețea (ex. Z: → \\\\server\\...),
-* legăturile (symlink/junction) care duc în rețea.
+* network paths \\\\server\\share (UNC),
+* drives mapped from the network (e.g. Z: -> \\\\server\\...),
+* links (symlink/junction) that lead to the network.
 
-În plus, detectăm folderele sincronizate cu servicii cloud (OneDrive, Google
-Drive, Dropbox, iCloud...) ca să avertizăm utilizatorul: sincronizarea o face
-acel serviciu, nu CardVault.
+We also detect folders synced by cloud services (OneDrive, Google Drive,
+Dropbox, iCloud...) to warn the user: that service does the syncing, not
+CardVault.
 """
 
 import os
@@ -35,13 +35,13 @@ def _existing_ancestor(path: str) -> str:
 
 
 def is_network_path(path: str) -> bool:
-    """True dacă `path` duce (direct sau prin legături) într-o locație din rețea."""
+    """True if `path` leads (directly or through links) to a network location."""
     if not path:
         return True
     raw = str(path)
     checks = [raw]
     try:
-        checks.append(os.path.realpath(_existing_ancestor(raw)))  # rezolvă symlink/junction
+        checks.append(os.path.realpath(_existing_ancestor(raw)))  # resolves symlinks/junctions
     except OSError:
         pass
     for p in checks:
@@ -50,7 +50,7 @@ def is_network_path(path: str) -> bool:
         if low.startswith("\\\\?\\unc\\"):
             return True
         if low.startswith("\\\\.\\"):
-            return True                      # căi de dispozitiv (pipe etc.) – refuzate
+            return True                      # device paths (pipes etc.) - rejected
         if low.startswith("\\\\?\\"):
             norm = norm[4:]
             low = norm.lower()
@@ -84,7 +84,7 @@ _CLOUD_SEGMENTS = {
 
 
 def cloud_service(path: str):
-    """Numele serviciului cloud dacă `path` e într-un folder sincronizat, altfel None."""
+    """Name of the cloud service if `path` is in a synced folder, otherwise None."""
     full = os.path.normcase(os.path.abspath(path))
     for var in ("OneDrive", "OneDriveConsumer", "OneDriveCommercial"):
         root = os.environ.get(var)
@@ -100,7 +100,7 @@ def cloud_service(path: str):
 
 
 def is_packaged() -> bool:
-    """True când rulează ca pachet MSIX (versiunea din Microsoft Store)."""
+    """True when running as an MSIX package (the Microsoft Store version)."""
     if sys.platform != "win32":
         return False
     try:
@@ -124,10 +124,10 @@ def home_dir() -> str:
 
 
 def default_vault_path() -> str:
-    """Locația implicită a bazei de date: C:\\Users\\<utilizator>\\CardVault\\wallet.cvw.
+    """Default database location: C:\\Users\\<user>\\CardVault\\wallet.cvw.
 
-    E vizibilă, locală, nu e sincronizată în cloud, nu e virtualizată de MSIX
-    și nu se șterge la dezinstalare.
+    Visible, local, not synced to the cloud, not virtualised by MSIX and not
+    deleted on uninstall.
     """
     local = os.environ.get("LOCALAPPDATA") or os.path.join(home_dir(), ".local", "share")
     folder = _first_local([os.path.join(home_dir(), "CardVault"),
@@ -136,7 +136,7 @@ def default_vault_path() -> str:
 
 
 def settings_dir() -> str:
-    """Setările stau în %LOCALAPPDATA% (nu se sincronizează niciodată prin roaming)."""
+    """Settings live in %LOCALAPPDATA% (never synced through roaming profiles)."""
     local = os.environ.get("LOCALAPPDATA") or os.path.join(home_dir(), ".config")
     return _first_local([os.path.join(local, "CardVault"),
                          os.path.join(home_dir(), "CardVault")]) or os.path.join(local, "CardVault")

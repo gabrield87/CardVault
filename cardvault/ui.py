@@ -43,7 +43,7 @@ def resource_path(rel: str) -> str:
 
 
 def app_data_dir() -> str:
-    """Folderul setărilor (local, nesincronizat)."""
+    """Settings folder (local, never synced)."""
     return settings_dir()
 
 
@@ -74,30 +74,30 @@ def load_settings() -> dict:
 def save_settings(settings: dict):
     folder = app_data_dir()
     if is_network_path(folder):
-        return  # nu scriem nimic în rețea
+        return  # never write anything to the network
     os.makedirs(folder, exist_ok=True)
     with open(os.path.join(folder, "settings.json"), "w", encoding="utf-8") as f:
         json.dump(settings, f, indent=2)
 
 
 class _HideNetworkDrives(QSortFilterProxyModel):
-    """Ascunde din dialogul de fișiere unitățile mapate din rețea."""
+    """Hides mapped network drives from the file dialog."""
 
     def filterAcceptsRow(self, row, parent):
         model = self.sourceModel()
         idx = model.index(row, 0, parent)
         path = model.filePath(idx) if hasattr(model, "filePath") else ""
         root = path.rstrip("/\\")
-        if len(root) == 2 and root[1] == ":":     # rădăcină de disc, ex. "Z:"
+        if len(root) == 2 and root[1] == ":":     # drive root, e.g. "Z:"
             return not is_network_path(root + "\\")
         return True
 
 
 def pick_vault_file(parent, tr, title, start, save=True):
-    """Dialog de fișiere (Qt, non-nativ: fără extensii shell sau „Rețea”).
+    """File dialog (Qt, non-native: no shell extensions, no "Network" section).
 
-    Returnează o cale locală validată, sau None. Refuză locațiile din rețea și
-    avertizează pentru folderele sincronizate cu cloud-ul.
+    Returns a validated local path, or None. Rejects network locations and
+    warns about cloud-synced folders.
     """
     while True:
         dlg = QFileDialog(parent, title, start, "CardVault (*.cvw)")
@@ -129,7 +129,7 @@ _QT_TRANSLATOR = None
 
 
 def install_qt_translator(lang: str):
-    """Traducerile Qt (dialogul de fișiere etc.) pentru limbile în care există."""
+    """Qt translations (file dialog etc.) for the languages where they exist."""
     global _QT_TRANSLATOR
     app = QApplication.instance()
     if app is None:
@@ -145,7 +145,7 @@ def install_qt_translator(lang: str):
 
 
 def check_local_location(parent, tr, path):
-    """(ok, path). Refuză rețeaua; cere confirmare pentru folderele cloud."""
+    """(ok, path). Rejects network paths; asks for confirmation on cloud folders."""
     if is_network_path(path):
         QMessageBox.warning(parent, tr("local_only_title"), tr("network_path_blocked"))
         return False, path
@@ -252,7 +252,7 @@ def bank_logo(bank_id: str):
 
 
 def draw_bank_mark(p: QPainter, area: QRectF, bank_id: str, color: QColor, align_left=True, mini=False):
-    """Sigla băncii (dacă fișierul există) sau numele ei."""
+    """The bank logo (if the file exists) or its name."""
     b = bank(bank_id)
     logo = bank_logo(bank_id)
     if logo:
@@ -297,7 +297,7 @@ def paint_card(p: QPainter, rect: QRectF, card: dict, tr, reveal=False, compact=
     p.setRenderHint(QPainter.RenderHint.Antialiasing)
     p.fillPath(path, grad)
     p.setClipPath(path)
-    # elemente decorative în culoarea de accent a băncii
+    # decorative shapes in the bank's accent colour
     p.setPen(Qt.PenStyle.NoPen)
     deco = QColor(accent)
     deco.setAlpha(theme.get("deco_alpha", 38))
@@ -318,10 +318,10 @@ def paint_card(p: QPainter, rect: QRectF, card: dict, tr, reveal=False, compact=
 
     pad = w * 0.07
 
-    # sigla / numele băncii (stânga sus)
+    # bank logo / name (top left)
     draw_bank_mark(p, QRectF(rect.x() + pad, rect.y() + pad * 0.75, w * 0.5, h * 0.15), bid, text)
 
-    # tip card (dreapta sus) — cod scurt + auto-micșorare ca să nu se suprapună cu banca
+    # card network (top right) — short code + auto-shrink so it never overlaps the bank
     brand = {"American Express": "AMEX", "Diners Club": "DINERS"}.get(
         detect_brand(card.get("number", "")), detect_brand(card.get("number", "")).upper())
     brand_area = QRectF(rect.x() + w * 0.54, rect.y() + pad * 0.75, w * 0.46 - pad, h * 0.15)
@@ -336,7 +336,7 @@ def paint_card(p: QPainter, rect: QRectF, card: dict, tr, reveal=False, compact=
     p.setPen(text)
     p.drawText(brand_area, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter, brand)
 
-    # cip
+    # chip
     chip = QRectF(rect.x() + pad, rect.y() + h * 0.32, w * 0.12, h * 0.17)
     cg = QLinearGradient(chip.topLeft(), chip.bottomRight())
     cg.setColorAt(0, QColor("#f5d77a"))
@@ -347,7 +347,7 @@ def paint_card(p: QPainter, rect: QRectF, card: dict, tr, reveal=False, compact=
     p.drawLine(chip.left(), chip.center().y(), chip.right(), chip.center().y())
     p.drawLine(chip.center().x(), chip.top(), chip.center().x(), chip.bottom())
 
-    # numele cardului (dreapta, lângă cip)
+    # card name (right, next to the chip)
     lf = QFont()
     lf.setPixelSize(max(7, int(h * 0.06)))
     p.setFont(lf)
@@ -356,7 +356,7 @@ def paint_card(p: QPainter, rect: QRectF, card: dict, tr, reveal=False, compact=
     p.drawText(lrect, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
                p.fontMetrics().elidedText(card.get("label", ""), Qt.TextElideMode.ElideRight, int(lrect.width())))
 
-    # număr
+    # card number
     num = format_number(card.get("number", "")) if reveal else mask_number(card.get("number", ""))
     nf = mono_font(1)
     nf.setPixelSize(max(8, int(h * 0.105)))
@@ -365,7 +365,7 @@ def paint_card(p: QPainter, rect: QRectF, card: dict, tr, reveal=False, compact=
     p.drawText(QRectF(rect.x() + pad, rect.y() + h * 0.55, w - 2 * pad, h * 0.15),
                Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, num)
 
-    # titular + expirare
+    # cardholder + expiry
     f2 = QFont()
     f2.setPixelSize(max(7, int(h * 0.05)))
     p.setFont(f2)
@@ -480,7 +480,7 @@ class CardItemDelegate(QStyledItemDelegate):
 # ---------------------------------------------------------------- dialogs
 
 def ask(parent, tr, text) -> bool:
-    """Confirmare Da/Nu cu butoane traduse (Qt nu are traducere în română)."""
+    """Yes/No confirmation with translated buttons (Qt has no Romanian translation)."""
     box = QMessageBox(parent)
     box.setWindowTitle(tr("confirm"))
     box.setIcon(QMessageBox.Icon.Question)
@@ -838,7 +838,7 @@ class LoginPage(QWidget):
             else:
                 self.error.setText(tr("wrong_password"))
             return
-        except Exception as e:  # ex. nu se poate scrie fișierul ales
+        except Exception as e:  # e.g. the chosen file cannot be written
             QApplication.restoreOverrideCursor()
             self.error.setText(str(e))
             return
@@ -906,7 +906,7 @@ class WalletPage(QWidget):
     # data
     def reload(self, select_id=None):
         self.cards = self.win.vault.list_cards()
-        for c in self.cards:  # carduri din v1.0: banca era text liber
+        for c in self.cards:  # cards from v1.0: the bank was free text
             bid = card_bank_id(c)
             c["bank_id"] = bid
             if bid:
@@ -1160,7 +1160,7 @@ class ExpiryAlertDialog(QDialog):
 
 
 class PrivacyDialog(QDialog):
-    """Disclaimer de confidențialitate: afișat la prima pornire și din meniul Ajutor."""
+    """Privacy disclaimer: shown on first launch and from the Help menu."""
 
     def __init__(self, tr, parent=None):
         super().__init__(parent)
@@ -1327,7 +1327,7 @@ class MainWindow(QMainWindow):
         act_about.triggered.connect(self.about)
         m_help.addAction(act_about)
 
-        # bara de stare: stânga = versiune + calea bazei de date; dreapta = copyright
+        # status bar: left = version + database path; right = offline badge + copyright
         sb = self.statusBar()
         if not hasattr(self, "info_label"):
             self.info_label = QLabel()
@@ -1372,10 +1372,10 @@ class MainWindow(QMainWindow):
         self.info_label.setToolTip(path)
 
     def create_wallet(self, path, password):
-        """Creează portofelul la calea aleasă de utilizator."""
+        """Creates the wallet at the path chosen by the user."""
         path = os.path.abspath(path)
         if path != os.path.abspath(self.vault.path):
-            # înlocuiește fișierul gol creat implicit cu cel ales
+            # replace the empty default file with the chosen one
             old = self.vault.path
             was_empty = not self.vault.is_initialized()
             self.vault.close()
@@ -1462,7 +1462,7 @@ class MainWindow(QMainWindow):
             break
 
     def export_vault(self):
-        """Exportă o copie a bazei de date (rămâne criptată); originalul rămâne pe loc."""
+        """Exports a copy of the database (still encrypted); the original stays in place."""
         if not self.vault.unlocked:
             return
         name = f"CardVault-export-{datetime.now():%Y%m%d-%H%M}.cvw"
@@ -1477,7 +1477,7 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, self.tr("error"), str(e))
 
     def move_vault(self):
-        """Mută fișierul bazei de date la o locație nouă și o reține."""
+        """Moves the database file to a new location and remembers it."""
         if not self.vault.unlocked:
             return
         current = os.path.basename(self.vault.path) or "wallet.cvw"
@@ -1498,7 +1498,7 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, self.tr("error"), str(e))
 
     def open_vault(self):
-        """Deschide un fișier CardVault existent (ex. după reinstalare sau de pe stick USB)."""
+        """Opens an existing CardVault file (e.g. after reinstalling, or from a USB stick)."""
         tr = self.tr
         start = os.path.dirname(self.vault.path) if self.vault else home_dir()
         path = pick_vault_file(self, tr, tr("open_db_title"), start, save=False)
@@ -1514,7 +1514,7 @@ class MainWindow(QMainWindow):
         old = self.vault.path
         was_empty = not self.vault.is_initialized()
         self.vault.close()
-        if was_empty:  # fișierul gol creat implicit la pornire nu mai e necesar
+        if was_empty:  # the empty file created at startup is no longer needed
             try:
                 os.remove(old)
                 os.rmdir(os.path.dirname(old))
@@ -1567,7 +1567,7 @@ def run():
     app.setWindowIcon(QIcon(resource_path(os.path.join("assets", "icon.png"))))
     activity = ActivityFilter()
     app.installEventFilter(activity)
-    netguard.install()  # idempotent; main.py îl activează deja înaintea oricărui import
+    netguard.install()  # idempotent; main.py already enables it before any other import
     settings = load_settings()
     path = settings.get("db_path")
     if not path or is_network_path(path) or not os.path.isfile(path):

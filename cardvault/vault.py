@@ -1,15 +1,15 @@
 # CardVault - encrypted storage
 # Copyright (c) 2026 Gabriel Dobre. All rights reserved.
 """
-Bază de date SQLite dedicată, protejată cu parolă.
+Dedicated, password-protected SQLite database.
 
-* Cheia de criptare (256 biți) este derivată din parola principală cu scrypt
-  (N=2^17, r=8, p=1) și un salt aleatoriu de 16 octeți.
-* Fiecare card este serializat JSON și criptat individual cu AES-256-GCM
-  (nonce aleatoriu de 12 octeți, ID-ul cardului ca date asociate).
-* În fișier nu se păstrează nimic în clar despre carduri.
-* Parola în sine nu este stocată nicăieri; se verifică prin decriptarea
-  unui bloc "verifier".
+* The 256-bit encryption key is derived from the master password with scrypt
+  (N=2^17, r=8, p=1) and a random 16-byte salt.
+* Each card is serialised to JSON and encrypted individually with AES-256-GCM
+  (random 12-byte nonce, card ID as associated data).
+* Nothing about the cards is stored in plain text.
+* The password itself is never stored; it is checked by decrypting a
+  "verifier" block.
 """
 
 import json
@@ -72,7 +72,7 @@ class Vault:
 
     @staticmethod
     def is_vault_file(path: str) -> bool:
-        """Verifică DOAR-CITIRE dacă fișierul e o bază de date CardVault (nu îl modifică)."""
+        """READ-ONLY check whether the file is a CardVault database (never modifies it)."""
         if not os.path.isfile(path):
             return False
         try:
@@ -173,7 +173,7 @@ class Vault:
         plain = [(cid, _decrypt(old_key, blob, cid.encode())) for cid, blob in rows]
         salt = os.urandom(16)
         new_key = _derive_key(new_password, salt, KDF_PARAMS)
-        with self._conn:  # o singură tranzacție: totul sau nimic
+        with self._conn:  # single transaction: all or nothing
             self._set_meta("kdf", json.dumps(KDF_PARAMS))
             self._set_meta("salt", salt)
             self._set_meta("verifier", _encrypt(new_key, _VERIFIER, b"verifier"))
@@ -185,7 +185,7 @@ class Vault:
         self._key = new_key
 
     def export(self, dest: str):
-        """Exportă o copie a bazei de date (rămâne criptată cu aceeași parolă)."""
+        """Exports a copy of the database (still encrypted with the same password)."""
         folder = os.path.dirname(os.path.abspath(dest))
         if folder:
             os.makedirs(folder, exist_ok=True)
@@ -197,14 +197,14 @@ class Vault:
         finally:
             target.close()
 
-    # compatibilitate cu numele vechi
+    # backwards-compatible name
     backup = export
 
     def relocate(self, new_path: str):
-        """Mută fișierul bazei de date la o cale nouă, păstrând starea deblocată.
+        """Moves the database file to a new path, keeping the unlocked state.
 
-        Copiază conținutul în noua locație, comută conexiunea pe ea și șterge
-        vechiul fișier doar după ce mutarea a reușit.
+        Copies the content to the new location, switches the connection to it and
+        deletes the old file only after the move has succeeded.
         """
         new_path = os.path.abspath(new_path)
         old_path = os.path.abspath(self.path)
@@ -213,18 +213,18 @@ class Vault:
         folder = os.path.dirname(new_path)
         if folder:
             os.makedirs(folder, exist_ok=True)
-        # scrie noua copie printr-un backup consistent al bazei curente
+        # write the new copy through a consistent backup of the current database
         target = sqlite3.connect(new_path)
         try:
             self._conn.backup(target)
         finally:
             target.close()
-        # comută pe noul fișier
+        # switch to the new file
         self._conn.close()
         self._conn = sqlite3.connect(new_path)
         self._conn.execute("PRAGMA secure_delete = ON")
         self.path = new_path
-        # înlătură vechiul fișier (best-effort)
+        # remove the old file (best effort)
         try:
             if os.path.exists(old_path):
                 os.remove(old_path)

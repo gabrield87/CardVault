@@ -437,7 +437,7 @@ T = {
 }
 
 
-# ---- v1.1: bănci emitente + alertă de expirare
+# ---- v1.1: issuing banks + expiry alert
 _NEW = {
     "en": {
         "yes": "Yes",
@@ -527,7 +527,7 @@ _NEW = {
 for _code, _vals in _NEW.items():
     T[_code].update(_vals)
 
-# ---- v1.2: locație vault (creare/mutare/export) + bară de stare
+# ---- v1.2: vault location (create/move/export) + status bar
 _NEW2 = {
     "en": {
         "create_location": "Database file location",
@@ -612,7 +612,7 @@ for _code, _vals in _NEW2.items():
     T[_code].update(_vals)
 
 
-# ---- v1.3: funcționare strict offline + disclaimer + deschidere bază existentă
+# ---- v1.3: strictly offline operation + disclaimer + open existing database
 _NEW3 = {
     "en": {
         "privacy_title": "CardVault works 100% offline",
@@ -729,7 +729,7 @@ LANGUAGES = list(T.keys())
 
 
 def _windows_ui_language():
-    """Limba interfeței Windows (ex. 'ro' pentru un Windows în română)."""
+    """Windows UI language (e.g. 'ro' for a Romanian Windows)."""
     try:
         import ctypes
         lang_id = ctypes.windll.kernel32.GetUserDefaultUILanguage()

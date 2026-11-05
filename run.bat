@@ -1,5 +1,5 @@
 @echo off
-REM CardVault - run from source. Copyright (c) 2026 Gabriel Dobre.
+REM CardVault - run from source. Copyright (c) 2026 Gabriel Dobre. All rights reserved.
 cd /d "%~dp0"
 if not exist .venv (
     python -m venv .venv

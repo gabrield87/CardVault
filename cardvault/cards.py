@@ -6,16 +6,16 @@ from datetime import date, timedelta
 
 # (c1, c2) gradient presets
 COLORS = [
-    ("#1e3c72", "#2a5298"),  # albastru
-    ("#141e30", "#35577d"),  # bleumarin
-    ("#0f2027", "#2c5364"),  # petrol
-    ("#11998e", "#38ef7d"),  # verde
-    ("#8e2de2", "#4a00e0"),  # violet
-    ("#c31432", "#240b36"),  # roșu
-    ("#f7971e", "#c0392b"),  # portocaliu
-    ("#232526", "#414345"),  # negru
-    ("#b8860b", "#5c4300"),  # auriu
-    ("#606c88", "#3f4c6b"),  # argintiu
+    ("#1e3c72", "#2a5298"),  # blue
+    ("#141e30", "#35577d"),  # navy
+    ("#0f2027", "#2c5364"),  # teal
+    ("#11998e", "#38ef7d"),  # green
+    ("#8e2de2", "#4a00e0"),  # purple
+    ("#c31432", "#240b36"),  # red
+    ("#f7971e", "#c0392b"),  # orange
+    ("#232526", "#414345"),  # black
+    ("#b8860b", "#5c4300"),  # gold
+    ("#606c88", "#3f4c6b"),  # silver
 ]
 
 
@@ -81,7 +81,7 @@ def mask_number(number: str) -> str:
 
 
 def parse_expiry(text: str):
-    """'MM/YY' -> (month, year) sau None."""
+    """'MM/YY' -> (month, year) or None."""
     m = re.fullmatch(r"\s*(\d{1,2})\s*/\s*(\d{2}|\d{4})\s*", text or "")
     if not m:
         return None
@@ -94,7 +94,7 @@ def parse_expiry(text: str):
 
 
 def expiry_last_day(text: str):
-    """Ultima zi în care cardul mai este valabil (ultima zi a lunii de expirare)."""
+    """Last day the card is still valid (last day of the expiry month)."""
     parsed = parse_expiry(text)
     if not parsed:
         return None
@@ -110,7 +110,7 @@ def days_left(text: str, today: date = None):
 
 
 def expiry_status(text: str, soon_days: int = 60, today: date = None) -> str:
-    """'expired', 'soon', 'ok' sau '' dacă data lipsește."""
+    """'expired', 'soon', 'ok' or '' when the date is missing."""
     left = days_left(text, today)
     if left is None:
         return ""

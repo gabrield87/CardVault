@@ -2,13 +2,13 @@
 # Copyright (c) 2026 Gabriel Dobre. All rights reserved.
 import sys
 
-# 1) PRIMUL lucru la pornire: blocăm orice acces la rețea (internet ȘI rețea locală),
-#    înainte să se încarce orice altă bibliotecă.
+# 1) FIRST thing at startup: block all network access (internet AND local network)
+#    before any other library is loaded.
 from cardvault import netguard
 
 netguard.install()
 
-# 2) Abia apoi restul aplicației.
+# 2) Only then load the rest of the application.
 from cardvault.ui import run  # noqa: E402
 
 if __name__ == "__main__":

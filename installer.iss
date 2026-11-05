@@ -1,12 +1,12 @@
-﻿; CardVault - script Inno Setup (optional, https://jrsoftware.org/isinfo.php)
+﻿; CardVault - Inno Setup script
 ; Copyright (c) 2026 Gabriel Dobre. All rights reserved.
-; Deschide fisierul in Inno Setup si apasa Compile. Rezulta CardVault-Setup-1.2.0.exe.
+; Built by the GitHub workflow:  ISCC /DAppVersion=1.3.0 installer.iss
+; Locally: open in Inno Setup and press Compile (needs dist\CardVault from build.bat).
 
 #define AppName "CardVault"
-; Versiunea vine din workflow:  ISCC /DAppVersion=1.3.0 installer.iss
-; (implicit 1.2.0 când compilezi local fără s-o dai)
+; The version comes from the workflow (/DAppVersion=...); fallback for local builds:
 #ifndef AppVersion
-  #define AppVersion "1.2.0"
+  #define AppVersion "1.3.0"
 #endif
 #define AppPublisher "Gabriel Dobre"
 #define AppYear GetDateTimeString('yyyy', '', '')
@@ -28,13 +28,14 @@ SolidCompression=yes
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 MinVersion=10.0.17763
-; Drepturi de administrator: necesare pentru regulile Windows Firewall de mai jos.
+; Administrator rights: required for the Windows Firewall rules below.
 PrivilegesRequired=admin
 WizardStyle=modern
 LicenseFile=LICENSE
 
 [Languages]
-Name: "romanian"; MessagesFile: "compiler:Languages\Romanian.isl"
+; English is the default. Only languages shipped officially with Inno Setup 6 are
+; used, so the build never depends on unofficial translation files.
 Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "german"; MessagesFile: "compiler:Languages\German.isl"
 Name: "french"; MessagesFile: "compiler:Languages\French.isl"
@@ -53,17 +54,17 @@ Name: "{group}\{cm:UninstallProgram,CardVault}"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\CardVault"; Filename: "{app}\CardVault.exe"; Tasks: desktopicon
 
 [Run]
-; Blocare la nivel de sistem: Windows Firewall interzice ORICE trafic al CardVault.exe
-; (internet și rețea locală, la intrare și la ieșire). Regulile de blocare au prioritate
-; față de orice regulă de permitere. Se șterg întâi eventualele reguli vechi.
-Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""CardVault - blocare iesire"""; Flags: runhidden waituntilterminated
-Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""CardVault - blocare intrare"""; Flags: runhidden waituntilterminated
-Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall add rule name=""CardVault - blocare iesire"" dir=out action=block program=""{app}\CardVault.exe"" enable=yes profile=any"; Flags: runhidden waituntilterminated; StatusMsg: "Configurez Windows Firewall (CardVault fara retea)..."
-Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall add rule name=""CardVault - blocare intrare"" dir=in action=block program=""{app}\CardVault.exe"" enable=yes profile=any"; Flags: runhidden waituntilterminated
+; System-level lockdown: Windows Firewall blocks ALL traffic of CardVault.exe
+; (internet and local network, inbound and outbound). Block rules take precedence
+; over any allow rule. Old rules are removed first.
+Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""CardVault - block outbound"""; Flags: runhidden waituntilterminated
+Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""CardVault - block inbound"""; Flags: runhidden waituntilterminated
+Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall add rule name=""CardVault - block outbound"" dir=out action=block program=""{app}\CardVault.exe"" enable=yes profile=any"; Flags: runhidden waituntilterminated; StatusMsg: "Configuring Windows Firewall (CardVault has no network access)..."
+Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall add rule name=""CardVault - block inbound"" dir=in action=block program=""{app}\CardVault.exe"" enable=yes profile=any"; Flags: runhidden waituntilterminated
 Filename: "{app}\CardVault.exe"; Description: "{cm:LaunchProgram,CardVault}"; Flags: nowait postinstall skipifsilent
 
-; Baza de date (implicit C:\Users\<utilizator>\CardVault) NU se sterge la dezinstalare.
+; The database (default C:\Users\<user>\CardVault) is NOT deleted on uninstall.
 
 [UninstallRun]
-Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""CardVault - blocare iesire"""; Flags: runhidden waituntilterminated; RunOnceId: "CardVaultFwOut"
-Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""CardVault - blocare intrare"""; Flags: runhidden waituntilterminated; RunOnceId: "CardVaultFwIn"
+Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""CardVault - block outbound"""; Flags: runhidden waituntilterminated; RunOnceId: "CardVaultFwOut"
+Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""CardVault - block inbound"""; Flags: runhidden waituntilterminated; RunOnceId: "CardVaultFwIn"

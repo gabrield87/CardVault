@@ -1,14 +1,14 @@
 # CardVault - issuing banks
 # Copyright (c) 2026 Gabriel Dobre. All rights reserved.
 """
-Băncile emitente acceptate și tema vizuală a fiecăreia.
+Supported issuing banks and the visual theme of each one.
 
-Pentru a adăuga o bancă nouă, adaugă o intrare în BANKS.
+To add a new bank, add an entry to BANKS.
 
-Siglele oficiale sunt mărci înregistrate ale băncilor și nu sunt incluse în
-aplicație. Pentru a le afișa pe carduri, pune fișierul PNG (fundal transparent)
-în folderul `banks` de lângă CardVault.exe, cu numele `<id>.png`
-(ex. `banks\\ing.png`). Fără fișier, pe card apare numele băncii.
+Official logos are registered trademarks of the banks and are not shipped with
+the app. To show them on cards, put a PNG file (transparent background) named
+`<id>.png` in the `banks` folder next to CardVault.exe (e.g. `banks\\ing.png`),
+or in `%USERPROFILE%\\CardVault\\banks`. Without a file, the bank name is shown.
 """
 
 import os
@@ -48,10 +48,10 @@ BANKS = {
         "name": "Raiffeisen Bank",
         "short": "Raiffeisen",
         "mini": "RAIFF",
-        "colors": ("#FFE100", "#D9A300"),   # galben auriu
-        "text": "#000000",                   # text negru
-        "accent": "#000000",                 # accente negre
-        "deco_alpha": 70,                    # cercul decorativ negru mai vizibil
+        "colors": ("#FFE100", "#D9A300"),   # golden yellow
+        "text": "#000000",                   # black text
+        "accent": "#000000",                 # black accents
+        "deco_alpha": 70,                    # stronger black decorative circle
     },
     "revolut": {
         "name": "Revolut",
@@ -87,7 +87,7 @@ def bank(bank_id: str) -> dict:
 
 
 def guess_bank_id(text: str) -> str:
-    """Pentru carduri salvate de versiunea 1.0 (banca era text liber)."""
+    """For cards saved by version 1.0 (the bank was free text)."""
     words = (text or "").lower().replace("-", " ").replace("–", " ").split()
     for bid, keys in _KEYWORDS.items():
         if any(k in words or (len(k) > 3 and k in (text or "").lower()) for k in keys):
@@ -96,7 +96,7 @@ def guess_bank_id(text: str) -> str:
 
 
 def logo_path(bank_id: str):
-    """Caută siglele lângă executabil (banks\\<id>.png), apoi în resursele aplicației."""
+    """Looks for logos next to the executable (banks\\<id>.png), then in other known places."""
     if not bank_id:
         return None
     if getattr(sys, "frozen", False):
@@ -105,7 +105,7 @@ def logo_path(bank_id: str):
         app_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     home = os.environ.get("USERPROFILE") or os.path.expanduser("~")
     candidates = [os.path.join(app_dir, "banks", f"{bank_id}.png"),
-                  # folder editabil și în versiunea din Store (unde folderul aplicației e doar-citire)
+                  # user-editable folder, also for the Store build (where the app folder is read-only)
                   os.path.join(home, "CardVault", "banks", f"{bank_id}.png")]
     meipass = getattr(sys, "_MEIPASS", None)
     if meipass:

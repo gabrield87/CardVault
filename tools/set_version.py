@@ -1,24 +1,23 @@
-# CardVault - injectează versiunea în aplicație la build
+# CardVault - injects the version into the application at build time
 # Copyright (c) 2026 Gabriel Dobre. All rights reserved.
 #
-# Scrie:
-#   cardvault/_version.py   -> versiunea citită de aplicație
-#   version_info.txt        -> metadatele din CardVault.exe (Proprietăți → Detalii)
+# Writes:
+#   cardvault/_version.py   -> version read by the application
+#   version_info.txt        -> CardVault.exe metadata (Properties -> Details)
 #
-# Versiunea se ia, în ordine, din:
-#   1) argument în linia de comandă:  python tools/set_version.py 1.4.0
-#   2) variabila de mediu GITHUB_REF_NAME (tag-ul Release, ex. "v1.4.0")
-#   3) variabila de mediu CARDVAULT_VERSION
-# Apelat automat de workflow-ul GitHub la publicarea unui Release.
+# The version is taken, in order, from:
+#   1) a command-line argument:   python tools/set_version.py 1.4.0
+#   2) the GITHUB_REF_NAME environment variable (Release tag, e.g. "v1.4.0")
+#   3) the CARDVAULT_VERSION environment variable
+# Called automatically by the GitHub workflows when a Release is published.
 
 import os
 import re
 import sys
 from datetime import date
 
-
-# Consola serverelor Windows de build folosește cp1252 (fără ă, ș, ț...).
-# Scriem mereu UTF-8, ca mesajele cu diacritice să nu oprească build-ul.
+# Windows build servers use a cp1252 console. Always write UTF-8 so that
+# non-ASCII characters (e.g. the copyright sign) never break the build.
 for _stream in (sys.stdout, sys.stderr):
     try:
         _stream.reconfigure(encoding="utf-8", errors="replace")
@@ -41,7 +40,7 @@ def resolve_version() -> str:
     m = re.match(r"^(\d+)\.(\d+)\.(\d+)", raw)
     if not m:
         raise SystemExit(
-            f"Versiune invalidă: {raw!r}. Aștept ceva de forma 1.4.0 (sau tag v1.4.0)."
+            f"Invalid version: {raw!r}. Expected something like 1.4.0 (or tag v1.4.0)."
         )
     return raw
 
@@ -61,9 +60,9 @@ def copyright_year() -> str:
 def write_version_module(version: str):
     path = os.path.join(ROOT, "cardvault", "_version.py")
     with open(path, "w", encoding="utf-8") as f:
-        f.write("# Generat automat de tools/set_version.py. Nu edita manual.\n")
+        f.write("# Generated automatically by tools/set_version.py. Do not edit by hand.\n")
         f.write(f'__version__ = "{version}"\n')
-    print("scris", path)
+    print("wrote", path)
 
 
 def write_version_info(version: str):
@@ -90,14 +89,14 @@ VSVersionInfo(
     path = os.path.join(ROOT, "version_info.txt")
     with open(path, "w", encoding="utf-8") as f:
         f.write(content)
-    print("scris", path)
+    print("wrote", path)
 
 
 def main():
     version = resolve_version()
     write_version_module(version)
     write_version_info(version)
-    print(f"Versiune aplicată: {version}")
+    print(f"Version applied: {version}")
 
 
 if __name__ == "__main__":
