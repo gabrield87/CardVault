@@ -33,6 +33,7 @@ from .localpath import (cloud_service, default_vault_path, home_dir, is_network_
 from .vault import Vault, WrongPassword
 
 AUTO_LOCK_SECONDS = 5 * 60
+DETAILS_AUTO_HIDE_SECONDS = 30   # shown card details hide again after 30 s of inactivity
 CLIPBOARD_CLEAR_SECONDS = 30
 MIN_PASSWORD = 8
 
@@ -1075,7 +1076,7 @@ class WalletPage(QWidget):
         self.win = window
         tr = window.tr
         self.cards = []
-        self.revealed = set()
+        self.details_shown = False   # one switch for all hidden data of the selected card
 
         root = QHBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
@@ -1119,7 +1120,7 @@ class WalletPage(QWidget):
         self.list.setItemDelegate(CardItemDelegate(tr, self.list))
         self.list.setMouseTracking(True)
         self.list.setVerticalScrollMode(QListWidget.ScrollMode.ScrollPerPixel)
-        self.list.currentItemChanged.connect(lambda *_: self.show_details())
+        self.list.currentItemChanged.connect(self.on_selection_changed)
         self.list.itemDoubleClicked.connect(lambda *_: self.edit_card())
         sl.addWidget(self.list, 1)
         self.count = QLabel()
@@ -1136,6 +1137,11 @@ class WalletPage(QWidget):
         self.scroll = QScrollArea()
         self.scroll.setWidgetResizable(True)
         root.addWidget(self.scroll, 1)
+
+        # hide shown details automatically after a period of inactivity
+        self.hide_timer = QTimer(self)
+        self.hide_timer.setInterval(1000)
+        self.hide_timer.timeout.connect(self.check_auto_hide)
 
         self.reload()
 
@@ -1250,6 +1256,13 @@ class WalletPage(QWidget):
             badge = QLabel(tr("expired" if status == "expired" else "expires_soon"))
             badge.setStyleSheet(f"color: {col}; font-size: 9pt; font-weight: 600; padding: 0 8px;")
             head.addWidget(badge)
+        # one button shows / hides every hidden detail of this card (placed before Edit)
+        rb = QPushButton(tr("hide_details") if self.details_shown else tr("show_details"))
+        if not self.details_shown:
+            rb.setObjectName("primary")
+        rb.setCursor(Qt.CursorShape.PointingHandCursor)
+        rb.clicked.connect(self.toggle_details)
+        head.addWidget(rb)
         eb = QPushButton(tr("edit"))
         eb.clicked.connect(self.edit_card)
         db = QPushButton(tr("delete_card"))
@@ -1260,9 +1273,14 @@ class WalletPage(QWidget):
         lay.addLayout(head)
 
         view = CardView(tr)
-        view.set_card(card, reveal="number" in self.revealed)
+        view.set_card(card, reveal=self.details_shown)
         view.setMaximumWidth(420)
         lay.addWidget(view, 0, Qt.AlignmentFlag.AlignLeft)
+
+        if self.details_shown:
+            note = QLabel(tr("auto_hide_note", s=DETAILS_AUTO_HIDE_SECONDS))
+            note.setObjectName("muted")
+            lay.addWidget(note)
 
         box = QFrame()
         box.setObjectName("box")
@@ -1288,25 +1306,20 @@ class WalletPage(QWidget):
             nl = QLabel(tr(key))
             nl.setObjectName("fieldName")
             grid.addWidget(nl, r, 0)
-            shown = value if (not secret or key in self.revealed) else masked
+            shown = value if (not secret or self.details_shown) else masked
             vl = QLabel(shown)
             vl.setObjectName("fieldValue")
             if key in ("number", "cvv", "pin", "expiry"):
                 vl.setFont(mono_font(11.5))
             grid.addWidget(vl, r, 1)
-            col = 2
-            if secret:
-                sb = QPushButton(tr("hide") if key in self.revealed else tr("show"))
-                sb.setObjectName("small")
-                sb.clicked.connect(lambda _=False, k=key: self.toggle(k))
-                grid.addWidget(sb, r, col)
-            col = 3
-            if key in ("holder", "number", "expiry", "cvv", "pin"):
+            # Copy works even while the details are hidden (the value is never shown on screen).
+            # The PIN has no Copy button: it is only there to remind you of it.
+            if key in ("holder", "number", "expiry", "cvv"):
                 cb = QPushButton(tr("copy"))
                 cb.setObjectName("small")
                 copy_value = digits(value) if key == "number" else value
                 cb.clicked.connect(lambda _=False, v=copy_value: self.win.copy_secret(v))
-                grid.addWidget(cb, r, col)
+                grid.addWidget(cb, r, 2)
             r += 1
         if card.get("notes"):
             nl = QLabel(tr("notes"))
@@ -1315,14 +1328,33 @@ class WalletPage(QWidget):
             nv = QLabel(card["notes"])
             nv.setWordWrap(True)
             nv.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-            grid.addWidget(nv, r, 1, 1, 3)
+            grid.addWidget(nv, r, 1, 1, 2)
         lay.addWidget(box)
         lay.addStretch()
         self.scroll.setWidget(w)
 
-    def toggle(self, key):
-        self.revealed ^= {key}
+    def on_selection_changed(self, *_):
+        # moving to another card always starts with its details hidden
+        self.hide_details()
+
+    def toggle_details(self):
+        if self.details_shown:
+            self.hide_details()
+        else:
+            self.details_shown = True
+            self.win.activity.last = time.monotonic()
+            self.hide_timer.start()
+            self.show_details()
+
+    def hide_details(self):
+        self.details_shown = False
+        self.hide_timer.stop()
         self.show_details()
+
+    def check_auto_hide(self):
+        if self.details_shown and time.monotonic() - self.win.activity.last >= DETAILS_AUTO_HIDE_SECONDS:
+            self.hide_details()
+            self.win.statusBar().showMessage(self.win.tr("details_auto_hidden"), 5000)
 
     def keyPressEvent(self, e):
         if e.key() == Qt.Key.Key_Delete and self.current():
@@ -1336,7 +1368,7 @@ class WalletPage(QWidget):
         if dlg.exec() == QDialog.DialogCode.Accepted and self.win.vault.unlocked:
             cid = self.win.vault.save_card(dlg.result_card)
             self.search.clear()
-            self.revealed.clear()
+            self.details_shown = False
             self.reload(select_id=cid)
 
     def edit_card(self):
@@ -1355,7 +1387,7 @@ class WalletPage(QWidget):
         tr = self.win.tr
         if ask(self.win, tr, tr("confirm_delete", name=card.get("label", ""))) and self.win.vault.unlocked:
             self.win.vault.delete_card(card["id"])
-            self.revealed.clear()
+            self.details_shown = False
             self.reload()
 
 
