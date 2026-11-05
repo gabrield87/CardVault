@@ -148,6 +148,25 @@ class Vault:
         cards.sort(key=lambda c: (c.get("label") or "").lower())
         return cards
 
+    # ---- view preferences (sort mode + custom order), stored ENCRYPTED --------
+    def get_view(self) -> dict:
+        """{"sort": "bank" | "name" | "custom", "order": [card ids]}"""
+        self._require_unlocked()
+        blob = self._meta("view")
+        if blob is None:
+            return {}
+        try:
+            data = json.loads(_decrypt(self._key, blob, b"view"))
+            return data if isinstance(data, dict) else {}
+        except Exception:
+            return {}
+
+    def set_view(self, view: dict):
+        self._require_unlocked()
+        blob = _encrypt(self._key, json.dumps(view).encode("utf-8"), b"view")
+        with self._conn:
+            self._set_meta("view", blob)
+
     def save_card(self, card: dict) -> str:
         self._require_unlocked()
         card = dict(card)
@@ -171,6 +190,8 @@ class Vault:
         old_key = self._check_password(old_password)
         rows = self._conn.execute("SELECT id, blob FROM cards").fetchall()
         plain = [(cid, _decrypt(old_key, blob, cid.encode())) for cid, blob in rows]
+        view_blob = self._meta("view")
+        view_plain = _decrypt(old_key, view_blob, b"view") if view_blob is not None else None
         salt = os.urandom(16)
         new_key = _derive_key(new_password, salt, KDF_PARAMS)
         with self._conn:  # single transaction: all or nothing
@@ -182,6 +203,8 @@ class Vault:
                     "UPDATE cards SET blob = ? WHERE id = ?",
                     (_encrypt(new_key, data, cid.encode()), cid),
                 )
+            if view_plain is not None:
+                self._set_meta("view", _encrypt(new_key, view_plain, b"view"))
         self._key = new_key
 
     def export(self, dest: str):
