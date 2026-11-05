@@ -64,6 +64,10 @@ BANKS = {
 
 BANK_IDS = list(BANKS.keys())
 
+# "Other bank": for cards whose bank is not in the list. The user types the bank
+# name; the card is drawn as an outline-only "ghost card" unless a colour is chosen.
+OTHER_BANK_ID = "other"
+
 _UNKNOWN = {
     "name": "",
     "short": "",

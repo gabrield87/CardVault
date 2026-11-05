@@ -12,7 +12,7 @@ from PySide6.QtCore import (QEvent, QLibraryInfo, QObject, QRectF, QSize, QSortF
 from PySide6.QtGui import (QAction, QActionGroup, QColor, QFont, QGuiApplication, QIcon,
                            QKeySequence, QLinearGradient, QPainter, QPainterPath, QPen,
                            QPixmap)
-from PySide6.QtWidgets import (QApplication, QComboBox, QDialog, QDialogButtonBox, QFileDialog,
+from PySide6.QtWidgets import (QApplication, QColorDialog, QComboBox, QDialog, QDialogButtonBox, QFileDialog,
                                QFormLayout, QFrame, QGridLayout, QHBoxLayout, QLabel,
                                QLineEdit, QListWidget, QListWidgetItem, QMainWindow,
                                QMessageBox, QPlainTextEdit, QPushButton, QScrollArea,
@@ -20,8 +20,8 @@ from PySide6.QtWidgets import (QApplication, QComboBox, QDialog, QDialogButtonBo
                                QVBoxLayout, QWidget)
 
 from . import APP_NAME, APP_VERSION, AUTHOR, COPYRIGHT, copyright_line, copyright_short
-from .banks import BANK_IDS, bank, guess_bank_id, logo_path
-from .cards import (days_left, detect_brand, digits, expiry_status, format_number,
+from .banks import BANK_IDS, OTHER_BANK_ID, bank, guess_bank_id, logo_path
+from .cards import (COLORS, days_left, detect_brand, digits, expiry_status, format_number,
                     luhn_ok, mask_number, parse_expiry)
 
 EXPIRY_WARNING_DAYS = 60
@@ -237,7 +237,26 @@ def mono_font(size: float, bold=False) -> QFont:
 
 
 def card_bank_id(card: dict) -> str:
-    return card.get("bank_id") or guess_bank_id(card.get("bank", ""))
+    bid = card.get("bank_id") or guess_bank_id(card.get("bank", ""))
+    if not bid and (card.get("bank") or "").strip():
+        bid = OTHER_BANK_ID          # free-text bank that is not in the list
+    return bid
+
+
+def card_custom_colors(card: dict):
+    """The user's colour override (c1, c2), or None to use the bank's colours."""
+    cc = card.get("custom_colors")
+    if isinstance(cc, (list, tuple)) and len(cc) == 2 and all(QColor(c).isValid() for c in cc):
+        return tuple(cc)
+    return None
+
+
+def readable_text_color(c1: str, c2: str) -> QColor:
+    """Black or white text, whichever reads better on the given gradient."""
+    def lum(c):
+        q = QColor(c)
+        return 0.2126 * q.redF() + 0.7152 * q.greenF() + 0.0722 * q.blueF()
+    return QColor("#000000") if (lum(c1) + lum(c2)) / 2 > 0.55 else QColor("#FFFFFF")
 
 
 _LOGO_CACHE = {}
@@ -251,10 +270,11 @@ def bank_logo(bank_id: str):
     return _LOGO_CACHE[bank_id]
 
 
-def draw_bank_mark(p: QPainter, area: QRectF, bank_id: str, color: QColor, align_left=True, mini=False):
-    """The bank logo (if the file exists) or its name."""
+def draw_bank_mark(p: QPainter, area: QRectF, bank_id: str, color: QColor, align_left=True, mini=False,
+                   label=None):
+    """The bank logo (if the file exists) or its name (or `label`, if given)."""
     b = bank(bank_id)
-    logo = bank_logo(bank_id)
+    logo = None if label is not None else bank_logo(bank_id)
     if logo:
         scaled = logo.scaled(int(area.width()), int(area.height()),
                              Qt.AspectRatioMode.KeepAspectRatio,
@@ -266,7 +286,8 @@ def draw_bank_mark(p: QPainter, area: QRectF, bank_id: str, color: QColor, align
     f.setBold(True)
     f.setPixelSize(max(6, int(area.height() * 0.78)))
     f.setLetterSpacing(QFont.SpacingType.PercentageSpacing, 104)
-    label = b.get("mini", b["short"]) if mini else b["short"]
+    if label is None:
+        label = b.get("mini", b["short"]) if mini else b["short"]
     p.setFont(f)
     while p.fontMetrics().horizontalAdvance(label) > area.width() and f.pixelSize() > 6:
         f.setPixelSize(f.pixelSize() - 1)
@@ -281,37 +302,64 @@ def draw_bank_mark(p: QPainter, area: QRectF, bank_id: str, color: QColor, align
 def paint_card(p: QPainter, rect: QRectF, card: dict, tr, reveal=False, compact=False):
     bid = card_bank_id(card)
     theme = bank(bid)
-    c1, c2 = theme["colors"]
-    text = QColor(theme["text"])
+    custom = card_custom_colors(card)
+    is_other = bid == OTHER_BANK_ID
+    ghost = is_other and not custom            # "Other bank" without a colour: outline only
+    if custom:                                 # user colour override; the bank name/logo stays
+        c1, c2 = custom
+        text = readable_text_color(c1, c2)
+        accent = QColor(text)
+        deco_alpha = 30
+    elif ghost:
+        c1 = c2 = None
+        text = QColor(C_TEXT)
+        accent = QColor(C_MUTED)
+        deco_alpha = 0
+    else:
+        c1, c2 = theme["colors"]
+        text = QColor(theme["text"])
+        accent = QColor(theme["accent"])
+        deco_alpha = theme.get("deco_alpha", 38)
     soft = QColor(text)
     soft.setAlpha(185)
-    accent = QColor(theme["accent"])
     w, h = rect.width(), rect.height()
     radius = h * 0.08
     path = QPainterPath()
     path.addRoundedRect(rect, radius, radius)
-    grad = QLinearGradient(rect.topLeft(), rect.bottomRight())
-    grad.setColorAt(0, QColor(c1))
-    grad.setColorAt(1, QColor(c2))
     p.save()
     p.setRenderHint(QPainter.RenderHint.Antialiasing)
-    p.fillPath(path, grad)
-    p.setClipPath(path)
-    # decorative shapes in the bank's accent colour
-    p.setPen(Qt.PenStyle.NoPen)
-    deco = QColor(accent)
-    deco.setAlpha(theme.get("deco_alpha", 38))
-    p.setBrush(deco)
-    p.drawEllipse(QRectF(rect.x() + w * 0.58, rect.y() - h * 0.5, w * 0.8, w * 0.8))
-    p.setBrush(QColor(255, 255, 255, 16))
-    p.drawEllipse(QRectF(rect.x() + w * 0.35, rect.y() + h * 0.5, w * 0.9, w * 0.9))
-    p.setClipping(False)
-    p.setPen(QColor(255, 255, 255, 45))
-    p.setBrush(Qt.BrushStyle.NoBrush)
-    p.drawPath(path)
+    if ghost:
+        p.setPen(QPen(QColor(C_MUTED), max(1.2, h * 0.012)))
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.drawPath(path)
+    else:
+        grad = QLinearGradient(rect.topLeft(), rect.bottomRight())
+        grad.setColorAt(0, QColor(c1))
+        grad.setColorAt(1, QColor(c2))
+        p.fillPath(path, grad)
+        p.setClipPath(path)
+        # decorative shapes in the accent colour
+        p.setPen(Qt.PenStyle.NoPen)
+        deco = QColor(accent)
+        deco.setAlpha(deco_alpha)
+        p.setBrush(deco)
+        p.drawEllipse(QRectF(rect.x() + w * 0.58, rect.y() - h * 0.5, w * 0.8, w * 0.8))
+        p.setBrush(QColor(255, 255, 255, 16))
+        p.drawEllipse(QRectF(rect.x() + w * 0.35, rect.y() + h * 0.5, w * 0.9, w * 0.9))
+        p.setClipping(False)
+        p.setPen(QColor(255, 255, 255, 45))
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.drawPath(path)
 
     if compact:
-        if bid:
+        if is_other:
+            qf = QFont()
+            qf.setBold(True)
+            qf.setPixelSize(max(8, int(h * 0.6)))
+            p.setFont(qf)
+            p.setPen(text)
+            p.drawText(rect, Qt.AlignmentFlag.AlignCenter, "?")
+        elif bid:
             draw_bank_mark(p, rect.adjusted(w * 0.1, h * 0.28, -w * 0.1, -h * 0.28), bid, text, align_left=False, mini=True)
         p.restore()
         return
@@ -319,7 +367,9 @@ def paint_card(p: QPainter, rect: QRectF, card: dict, tr, reveal=False, compact=
     pad = w * 0.07
 
     # bank logo / name (top left)
-    draw_bank_mark(p, QRectF(rect.x() + pad, rect.y() + pad * 0.75, w * 0.5, h * 0.15), bid, text)
+    other_label = ((card.get("bank") or "").strip() or "?") if is_other else None
+    draw_bank_mark(p, QRectF(rect.x() + pad, rect.y() + pad * 0.75, w * 0.5, h * 0.15), bid, text,
+                   label=other_label)
 
     # card network (top right) — short code + auto-shrink so it never overlaps the bank
     brand = {"American Express": "AMEX", "Diners Club": "DINERS"}.get(
@@ -500,12 +550,13 @@ def inform(parent, tr, text):
     box.addButton(tr("ok"), QMessageBox.ButtonRole.AcceptRole)
     box.exec()
 
-def bank_swatch(bank_id: str, tr, w=40, h=26) -> QPixmap:
+def bank_swatch(card_or_bank, tr, w=40, h=26) -> QPixmap:
+    card = card_or_bank if isinstance(card_or_bank, dict) else {"bank_id": card_or_bank}
     pm = QPixmap(w * 2, h * 2)
     pm.setDevicePixelRatio(2)
     pm.fill(Qt.GlobalColor.transparent)
     p = QPainter(pm)
-    paint_card(p, QRectF(0.5, 0.5, w - 1, h - 1), {"bank_id": bank_id}, tr, compact=True)
+    paint_card(p, QRectF(1, 1, w - 2, h - 2), card, tr, compact=True)
     p.end()
     return pm
 
@@ -535,8 +586,52 @@ class CardDialog(QDialog):
         self.e_bank.addItem(tr("choose_bank"), "")
         for bid in BANK_IDS:
             self.e_bank.addItem(QIcon(bank_swatch(bid, tr)), bank(bid)["name"], bid)
+        self.e_bank.addItem(QIcon(bank_swatch(OTHER_BANK_ID, tr)), tr("other_bank"), OTHER_BANK_ID)
         current = card_bank_id(self.card)
         self.e_bank.setCurrentIndex(max(0, self.e_bank.findData(current)) if current else 0)
+        # bank name, typed by the user when "Other bank" is selected
+        self.e_bank_name = QLineEdit(self.card.get("bank", "") if current == OTHER_BANK_ID else "")
+        self.e_bank_name.setPlaceholderText(tr("other_bank_name"))
+        self.e_bank_name.setMaxLength(40)
+        # card colour: bank default, a preset, or any colour
+        self.custom_colors = card_custom_colors(self.card)
+        color_row = QHBoxLayout()
+        color_row.setSpacing(6)
+        # first swatch = the selected bank's own colours (the default, preselected)
+        self.btn_default_color = QPushButton()
+        self.btn_default_color.setFixedSize(26, 26)
+        self.btn_default_color.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_default_color.clicked.connect(lambda: self.set_colors(None))
+        color_row.addWidget(self.btn_default_color)
+        sep = QFrame()
+        sep.setFixedSize(1, 20)
+        sep.setStyleSheet(f"background: {C_BORDER};")
+        color_row.addSpacing(4)
+        color_row.addWidget(sep)
+        color_row.addSpacing(4)
+        self.color_btns = []
+        for c1, c2 in COLORS:
+            b = QPushButton()
+            b.setFixedSize(26, 26)
+            b.setCursor(Qt.CursorShape.PointingHandCursor)
+            b.setProperty("grad", (c1, c2))
+            b.clicked.connect(lambda _=False, a=c1, z=c2: self.set_colors((a, z)))
+            color_row.addWidget(b)
+            self.color_btns.append(b)
+        self.btn_pick_color = QPushButton("+")
+        self.btn_pick_color.setFixedSize(26, 26)
+        self.btn_pick_color.setToolTip(tr("color_custom"))
+        self.btn_pick_color.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_pick_color.clicked.connect(self.pick_color)
+        color_row.addWidget(self.btn_pick_color)
+        color_row.addStretch()
+        # caption under the swatches: what is currently selected
+        self.color_caption = QLabel()
+        self.color_caption.setObjectName("muted")
+        color_box = QVBoxLayout()
+        color_box.setSpacing(4)
+        color_box.addLayout(color_row)
+        color_box.addWidget(self.color_caption)
         self.e_holder = QLineEdit(self.card.get("holder", ""))
         self.e_number = QLineEdit(format_number(self.card.get("number", "")))
         self.e_number.setFont(mono_font(11))
@@ -557,6 +652,10 @@ class CardDialog(QDialog):
         self.e_notes.setFixedHeight(70)
 
         form.addRow(tr("bank") + " *", self.e_bank)
+        form.addRow("", self.e_bank_name)
+        self._bank_name_row = form.rowCount() - 1
+        self._form = form
+        form.addRow(tr("color"), color_box)
         form.addRow(tr("label") + " *", self.e_label)
         form.addRow(tr("holder"), self.e_holder)
         form.addRow(tr("number") + " *", self.e_number)
@@ -579,11 +678,82 @@ class CardDialog(QDialog):
         btns.rejected.connect(self.reject)
         lay.addWidget(btns)
 
-        for e in (self.e_label, self.e_holder, self.e_expiry):
+        for e in (self.e_label, self.e_holder, self.e_expiry, self.e_bank_name):
             e.textChanged.connect(self.update_preview)
-        self.e_bank.currentIndexChanged.connect(self.update_preview)
+        self.e_bank.currentIndexChanged.connect(self.on_bank_changed)
         self.e_number.textEdited.connect(self.on_number_edited)
+        self.on_bank_changed()
+        self.set_colors(self.custom_colors)
+
+    def on_bank_changed(self, *_):
+        is_other = self.e_bank.currentData() == OTHER_BANK_ID
+        self._form.setRowVisible(self._bank_name_row, is_other)
+        if is_other:
+            self.e_bank_name.setFocus()
+        if hasattr(self, "color_btns"):
+            self.set_colors(self.custom_colors)   # refresh the "bank colours" swatch
         self.update_preview()
+
+    @staticmethod
+    def _swatch_style(bg, selected, check_color="#FFFFFF", dashed=False):
+        if selected:
+            border = "2px solid white"
+        else:
+            border = f"1px {'dashed' if dashed else 'solid'} {C_MUTED if dashed else C_BORDER}"
+        return (f"QPushButton {{ border-radius: 13px; border: {border}; padding: 0; background: {bg};"
+                f" color: {check_color}; font-weight: 800; font-size: 11pt; }}")
+
+    def set_colors(self, colors):
+        """None = the bank's own colours (default); (c1, c2) = colour override."""
+        tr = self.tr
+        self.custom_colors = tuple(colors) if colors else None
+        grad = "qlineargradient(x1:0,y1:0,x2:1,y2:1, stop:0 {}, stop:1 {})".format
+        check = "✓"
+
+        # default = the selected bank's colours, shown as the first swatch
+        bid = self.e_bank.currentData() or ""
+        is_default = self.custom_colors is None
+        if bid and bid != OTHER_BANK_ID:
+            a, z = bank(bid)["colors"]
+            self.btn_default_color.setStyleSheet(
+                self._swatch_style(grad(a, z), is_default, readable_text_color(a, z).name()))
+            default_caption = tr("color_bank_default")
+        else:                                   # "Other bank" / no bank: outline only (ghost)
+            self.btn_default_color.setStyleSheet(
+                self._swatch_style("transparent", is_default, C_TEXT, dashed=True))
+            default_caption = tr("color_none")
+        self.btn_default_color.setText(check if is_default else "")
+        self.btn_default_color.setToolTip(default_caption)
+
+        for b in self.color_btns:
+            a, z = b.property("grad")
+            selected = self.custom_colors == (a, z)
+            b.setStyleSheet(self._swatch_style(grad(a, z), selected, readable_text_color(a, z).name()))
+            b.setText(check if selected else "")
+
+        is_preset = self.custom_colors in [tuple(c) for c in COLORS]
+        custom_other = self.custom_colors is not None and not is_preset
+        if custom_other:
+            a, z = self.custom_colors
+            self.btn_pick_color.setStyleSheet(
+                self._swatch_style(grad(a, z), True, readable_text_color(a, z).name()))
+            self.btn_pick_color.setText(check)
+        else:
+            self.btn_pick_color.setStyleSheet(self._swatch_style(C_PANEL2, False, C_TEXT))
+            self.btn_pick_color.setText("+")
+        self.btn_pick_color.setToolTip(tr("color_custom"))
+
+        self.color_caption.setText(default_caption if is_default else tr("color_selected_custom"))
+        self.update_preview()
+
+    def pick_color(self):
+        start = QColor(self.custom_colors[0]) if self.custom_colors else QColor("#4f7cff")
+        dlg = QColorDialog(start, self)
+        dlg.setWindowTitle(self.tr("color_pick_title"))
+        dlg.setOption(QColorDialog.ColorDialogOption.DontUseNativeDialog, True)
+        if dlg.exec() == QDialog.DialogCode.Accepted and dlg.selectedColor().isValid():
+            c = dlg.selectedColor()
+            self.set_colors((c.name(), c.darker(145).name()))
 
     def on_number_edited(self, text):
         formatted = format_number(text)[:23]
@@ -595,16 +765,23 @@ class CardDialog(QDialog):
         exp = self.e_expiry.text()
         if digits(exp) == "":
             exp = ""
-        return {**self.card,
+        bid = self.e_bank.currentData() or ""
+        bank_name = self.e_bank_name.text().strip() if bid == OTHER_BANK_ID else bank(bid)["name"]
+        data = {**self.card,
                 "label": self.e_label.text().strip(),
-                "bank_id": self.e_bank.currentData() or "",
-                "bank": bank(self.e_bank.currentData())["name"],
+                "bank_id": bid,
+                "bank": bank_name,
                 "holder": self.e_holder.text().strip(),
                 "number": digits(self.e_number.text()),
                 "expiry": exp,
                 "cvv": self.e_cvv.text().strip(),
                 "pin": self.e_pin.text().strip(),
                 "notes": self.e_notes.toPlainText().strip()}
+        if getattr(self, "custom_colors", None):
+            data["custom_colors"] = list(self.custom_colors)
+        else:
+            data.pop("custom_colors", None)
+        return data
 
     def update_preview(self):
         self.preview.set_card(self.collect(), reveal=True)
@@ -620,6 +797,8 @@ class CardDialog(QDialog):
         if not c["bank_id"]:
             self.e_bank.showPopup()
             return self.fail(tr("bank_required"), self.e_bank)
+        if c["bank_id"] == OTHER_BANK_ID and not c["bank"]:
+            return self.fail(tr("required", field=tr("other_bank_name")), self.e_bank_name)
         if not c["label"]:
             return self.fail(tr("required", field=tr("label")), self.e_label)
         if not 12 <= len(c["number"]) <= 19:
@@ -909,7 +1088,7 @@ class WalletPage(QWidget):
         for c in self.cards:  # cards from v1.0: the bank was free text
             bid = card_bank_id(c)
             c["bank_id"] = bid
-            if bid:
+            if bid and bid != OTHER_BANK_ID:
                 c["bank"] = bank(bid)["name"]
         self.populate(select_id=select_id)
 
@@ -1129,7 +1308,7 @@ class ExpiryAlertDialog(QDialog):
         grid.setColumnStretch(1, 1)
         for r, c in enumerate(cards):
             sw = QLabel()
-            sw.setPixmap(bank_swatch(card_bank_id(c), tr, 54, 34))
+            sw.setPixmap(bank_swatch(c, tr, 54, 34))
             grid.addWidget(sw, r, 0)
             name = QLabel(f"<b>{_html(c.get('label', ''))}</b><br>"
                           f"<span style='color:{C_MUTED}'>{_html(c.get('bank', ''))}  ·  "

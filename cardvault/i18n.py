@@ -725,6 +725,30 @@ _NEW4 = {
 for _code, _vals in _NEW4.items():
     T[_code].update(_vals)
 
+# ---- v1.4: "Other bank" option + card colour override
+_NEW5 = {
+    "en": {"other_bank": "Other bank", "other_bank_name": "Bank name", "color_bank_default": "Bank colours", "color_custom": "Custom colour…", "color_pick_title": "Choose the card colour"},
+    "ro": {"other_bank": "Altă bancă", "other_bank_name": "Numele băncii", "color_bank_default": "Culorile băncii", "color_custom": "Altă culoare…", "color_pick_title": "Alege culoarea cardului"},
+    "de": {"other_bank": "Andere Bank", "other_bank_name": "Name der Bank", "color_bank_default": "Bankfarben", "color_custom": "Eigene Farbe…", "color_pick_title": "Kartenfarbe wählen"},
+    "fr": {"other_bank": "Autre banque", "other_bank_name": "Nom de la banque", "color_bank_default": "Couleurs de la banque", "color_custom": "Couleur personnalisée…", "color_pick_title": "Choisir la couleur de la carte"},
+    "es": {"other_bank": "Otro banco", "other_bank_name": "Nombre del banco", "color_bank_default": "Colores del banco", "color_custom": "Color personalizado…", "color_pick_title": "Elegir el color de la tarjeta"},
+    "it": {"other_bank": "Altra banca", "other_bank_name": "Nome della banca", "color_bank_default": "Colori della banca", "color_custom": "Colore personalizzato…", "color_pick_title": "Scegli il colore della carta"},
+}
+for _code, _vals in _NEW5.items():
+    T[_code].update(_vals)
+
+# ---- v1.4: colour row captions
+_NEW6 = {
+    "en": {"color_bank_default": "Bank colour (default)", "color_none": "No colour (outline only)", "color_selected_custom": "Custom colour"},
+    "ro": {"color_bank_default": "Culoarea băncii (implicit)", "color_none": "Fără culoare (doar chenar)", "color_selected_custom": "Culoare personalizată"},
+    "de": {"color_bank_default": "Bankfarbe (Standard)", "color_none": "Keine Farbe (nur Rahmen)", "color_selected_custom": "Eigene Farbe"},
+    "fr": {"color_bank_default": "Couleur de la banque (par défaut)", "color_none": "Sans couleur (contour seul)", "color_selected_custom": "Couleur personnalisée"},
+    "es": {"color_bank_default": "Color del banco (predeterminado)", "color_none": "Sin color (solo contorno)", "color_selected_custom": "Color personalizado"},
+    "it": {"color_bank_default": "Colore della banca (predefinito)", "color_none": "Nessun colore (solo bordo)", "color_selected_custom": "Colore personalizzato"},
+}
+for _code, _vals in _NEW6.items():
+    T[_code].update(_vals)
+
 LANGUAGES = list(T.keys())
 
 
